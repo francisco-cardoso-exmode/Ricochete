@@ -9,6 +9,7 @@ const vec=p=>({x:p[0],y:p[1],z:p[2]});
 export class Simulation {
  constructor(angle=90,level=5){
   this.level=Math.max(1,Math.min(5,level));this.lesson=LESSONS[this.level-1];this.levelPieces=piecesForLesson(this.level);
+  this.ballRadius=this.level<=2?.38:BALL_RADIUS;this.spawn={...SPAWN,y:this.ballRadius+.08};
   this.world=new RAPIER.World({x:0,y:-9.81,z:0});this.world.timestep=STEP;
   this.world.numSolverIterations=8;
   this.events=new RAPIER.EventQueue(true);this.angle=angle;this.targetAngle=angle;
@@ -19,7 +20,7 @@ export class Simulation {
   this.buildHinge();
   this.ball=this.world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(SPAWN.x,SPAWN.y,SPAWN.z).setCcdEnabled(true).setLinearDamping(.04).setAngularDamping(.05).setCanSleep(false));
   this.ball.userData={kind:'ball'};
-  this.ballCollider=this.world.createCollider(RAPIER.ColliderDesc.ball(BALL_RADIUS).setDensity(3).setRestitution(.43).setFriction(.16).setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS),this.ball);
+  this.ballCollider=this.world.createCollider(RAPIER.ColliderDesc.ball(this.ballRadius).setDensity(3).setRestitution(.43).setFriction(.16).setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS),this.ball);
   this.time=0;this.lives=5;this.saves=0;this.rally=0;this.stillTime=0;this.characters=CHARACTERS.map((info,index)=>{
    const p=characterPose(index,0);const body=this.world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(p.x,p.y,p.z));
    body.userData={kind:'character',index};const collider=this.world.createCollider(RAPIER.ColliderDesc.ball(CHARACTER_RADIUS).setSensor(true).setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS),body);
@@ -82,7 +83,7 @@ export class Simulation {
   if(immediate){this.angle=this.targetAngle;this.upper.setRotation(quat(foldRotation(this.angle)),true);this.upper.setNextKinematicRotation(quat(foldRotation(this.angle)));this.buildHinge();}
  }
  resetBall(){
-  this.ball.setTranslation(SPAWN,true);this.ball.setLinvel({x:0,y:0,z:0},true);this.ball.setAngvel({x:0,y:0,z:0},true);this.ball.resetForces(true);this.ball.resetTorques(true);this.ball.setGravityScale(0,true);this.ball.setBodyType(RAPIER.RigidBodyType.KinematicPositionBased,true);this.ball.setNextKinematicTranslation(SPAWN);this.state='ready';this.shotTime=0;this.inUpper=false;this.stillTime=0;this.rally=0;this.bonusSeen.clear();
+  this.ball.setTranslation(this.spawn,true);this.ball.setLinvel({x:0,y:0,z:0},true);this.ball.setAngvel({x:0,y:0,z:0},true);this.ball.resetForces(true);this.ball.resetTorques(true);this.ball.setGravityScale(0,true);this.ball.setBodyType(RAPIER.RigidBodyType.KinematicPositionBased,true);this.ball.setNextKinematicTranslation(this.spawn);this.state='ready';this.shotTime=0;this.inUpper=false;this.stillTime=0;this.rally=0;this.bonusSeen.clear();
  }
  launch(power=72,aim=0){
   if(this.state!=='ready'||this.lives<=0)return false;

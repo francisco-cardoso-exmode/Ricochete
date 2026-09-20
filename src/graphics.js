@@ -32,12 +32,8 @@ export class Graphics {
   for(const item of this.sim.levelPieces){const obj=this.piece(item);obj.userData=item;this.pieces.set(item.id,obj);if(item.dynamic||item.suspended||item.defender!==undefined){this.scene.add(obj);this.dynamics.set(item.id,obj);}else(item.side==='upper'?this.upper:this.base).add(obj);}
   this.padRings=this.sim.pads.map(f=>{const ring=torus(.91,.06,dark);ring.rotation.x=Math.PI/2;this.base.add(ring);return {ring,f};});
   this.addDetails();this.makeLauncher();this.makeMagazine();this.makeHinge();this.makeCharacters();this.makeHome();
-  this.ball=mesh(new THREE.SphereGeometry(BALL_RADIUS,32,24),new THREE.MeshStandardMaterial({color:0xf2f4f6,emissive:0xb4bdc4,emissiveIntensity:.12,metalness:.85,roughness:.16}),false);this.scene.add(this.ball);
-  const glow=torus(BALL_RADIUS*1.05,.012,new THREE.MeshBasicMaterial({color:0xecfbd2}));this.ball.add(glow);glow.rotation.x=.6;
-  this.heroFace=new THREE.Group();this.scene.add(this.heroFace);this.heroEyes=[];
-  for(const x of [-.12,.12]){const eye=mesh(new THREE.SphereGeometry(.105,16,12),material(0xf4f1e7),false);eye.scale.z=.5;at(this.heroFace,eye,[x,.075,.26]);const pupil=mesh(new THREE.SphereGeometry(.046,12,8),dark,false);at(this.heroFace,pupil,[x,.08,.313]);this.heroEyes.push({eye,pupil,x});}
-  const smile=torus(.095,.018,dark);smile.scale.y=.55;at(this.heroFace,smile,[0,-.12,.287]);this.heroMouth=smile;
-  const tuft=mesh(new THREE.ConeGeometry(.09,.18,12),material(0xc6b68e),false);at(this.heroFace,tuft,[.07,.32,0]);tuft.rotation.z=-.35;
+  this.ball=mesh(new THREE.SphereGeometry(simulation.ballRadius,32,24),new THREE.MeshStandardMaterial({color:0xd9e0e8,metalness:1,roughness:.095,envMapIntensity:1.65}),false);this.scene.add(this.ball);
+
   this.topCamera=new THREE.PerspectiveCamera(40,1,.08,100);this.bottomCamera=new THREE.PerspectiveCamera(40,1,.08,100);this.overviewCamera=new THREE.PerspectiveCamera(40,1,.08,140);
   this.path=new THREE.Group();this.scene.add(this.path);
   const aimMaterial=new THREE.MeshBasicMaterial({color:0xf0f2f4,transparent:true,opacity:.9});
@@ -265,11 +261,6 @@ export class Graphics {
   for(const [f,obj]of this.debris)if(!live.has(f)){this.scene.remove(obj);this.debris.delete(f);}
   for(const f of sim.fragments){let obj=this.debris.get(f);if(!obj){obj=box(...f.size,f.color);this.scene.add(obj);this.debris.set(f,obj);}obj.position.copy(f.body.translation());obj.quaternion.copy(f.body.rotation());}
   this.ball.visible=!['lost','gameover'].includes(sim.state);this.ball.position.copy(sim.ball.translation());this.ball.quaternion.copy(sim.ball.rotation());
-  this.heroFace.position.copy(this.ball.position);this.heroFace.quaternion.copy(this.overviewCamera.quaternion);this.heroFace.visible=this.ball.visible&&this.opening>=1;
-  const scared=sim.state==='flying'&&Math.hypot(...Object.values(sim.ball.linvel()))>20;
-  const blink=Math.sin(sim.time*2.3)>.985;
-  for(const {eye,pupil,x}of this.heroEyes){eye.scale.y=blink?.1:(sim.state==='ready'&&(this.aimPower||0)>85?.5:1);pupil.position.x=x+(sim.state==='ready'?Math.sin(this.launcher.rotation.y)*.035:0);pupil.scale.y=blink?.1:1;}
-  this.heroMouth.scale.y=scared?1:.45;
   if(this.homeGate){this.homeGate.position.copy(sim.homeGate.translation());this.homeGate.visible=this.opening>=1;this.homeLight.visible=this.opening>=1;this.homeLight.material.emissiveIntensity=sim.homeOpen?.8:0;this.homeWire.material.color.setHex(sim.homeOpen?0xb5d58b:0x727a80);this.homePad.scale.y=sim.assistAge<.3?3:1;this.homePuffs.forEach((p,i)=>{p.visible=this.opening>=1&&sim.assistCooldown>.35;const t=(.8-sim.assistCooldown)+i*.07;p.position.set((i-1)*.5,.2+t*1.1,9.2+t*2);p.scale.setScalar(.5+t*2);p.material.opacity=Math.max(0,.65-t);});}
   this.upper.rotation.x=foldRotation(sim.angle);
   this.launcher.visible=true;
