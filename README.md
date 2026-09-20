@@ -69,3 +69,11 @@ O modo de jogo começa com a caixa fechada. Toca em Abrir caixa: a tampa abre du
 5. O playground: construção completa.
 
 O teste atual destina-se a um ecrã único. Não existe ainda integração com a dobradiça física de telemóveis dobráveis.
+
+## Interação e destruição
+
+A vitória deixa a ação continuar 2,4 segundos antes do resultado. Ao apontar, a barra mostra a força e a seta sobe e cresce. A próxima bola entra a partir da armação exterior usando o mesmo corpo físico. A partir da caixa 3, mantém a defesa premida e posiciona a almofada mecânica para devolver a bola por contacto.
+
+A partir da caixa 2 há duas pequenas pilhas de tijolos com arestas gastas. Impactos acima de 4 unidades/s partem cada tijolo em oito fragmentos físicos, com gravidade, rotação e colisão. São peças pré-divididas, não fratura procedural; o limite é 64 fragmentos para conter o custo em telemóveis. O tratamento visual continua cinzento nesta etapa, inspirado nos volumes e desgaste da referência.
+
+A bola que regressa ao círculo é recolhida suavemente e pode ser relançada sem gastar vida. Puxar acima de 72% aumenta a velocidade e a elasticidade. A cavidade superior tem 3,6 unidades de profundidade; as barras diagonais e riscas exteriores foram retiradas.

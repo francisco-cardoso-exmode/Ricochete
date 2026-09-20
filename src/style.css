@@ -42,3 +42,7 @@ body.player header .icon-button{width:36px;height:36px;padding:8px;border:1px so
 body.player #sound span{display:none}body.player header{gap:6px}
 #open-box{border-radius:14px;padding:15px 28px;letter-spacing:.1px;font-weight:600;border-color:#ffffff55;background:linear-gradient(#eef0f3,#cdd3da);box-shadow:0 4px 16px #0002,inset 0 1px #fff9}
 .text-button .ui-icon,.reset-button .ui-icon{width:17px;height:17px}.brand-mark .ui-icon{width:23px;height:23px}
+
+#shot-power{position:absolute;top:62px;left:12px;z-index:12;width:164px;padding:12px 14px;background:#22292fe8;border:1px solid #a1abb34d;border-radius:12px;backdrop-filter:blur(8px)}
+#shot-power[hidden]{display:none}#shot-power label{display:flex;justify-content:space-between;font-size:10px;letter-spacing:1px;color:#dce2e7}
+#shot-power input{width:100%;margin:14px 0 8px;accent-color:#e8edf1}#shot-power small{font-size:9px;color:#aab4bc;line-height:1.4;display:block}

@@ -14,16 +14,17 @@ b('base',0,-.35,5.5,10.6,.7,11.5,{color:0x56595e,shell:true});
 b('base',-5.15,.65,6,.35,1.7,12.5,{color:0x848e84,shell:true});
 b('base',5.15,.65,6,.35,1.7,12.5,{color:0x848e84,shell:true});
 // Open lower edge: a real drain, rather than a reset timer.
-for(const side of [-1,1])b('base',side*3.9,.25,10.7,2.5,.5,.25,{rotation:[0,-side*.58,0],color:0x697368,shell:true});
+// Continuous external apron sits below the open playfield edge.
+b('base',0,-.56,11.9,10.6,.38,.42,{color:0x484b50,shell:true});
 b('upper',0,5.55,-.34,10.6,11.8,.65,{color:0x62666c,shell:true});
-b('upper',-5.15,5.5,1.12,.35,11.7,2.8,{color:0x90998c,shell:true});
-b('upper',5.15,5.5,1.12,.35,11.7,2.8,{color:0x90998c,shell:true});
-b('upper',0,11.3,1.12,10.6,.35,2.8,{color:0x747f70,shell:true});
+b('upper',-5.15,5.5,1.52,.35,11.7,3.6,{color:0x90998c,shell:true});
+b('upper',5.15,5.5,1.52,.35,11.7,3.6,{color:0x90998c,shell:true});
+b('upper',0,11.3,1.52,10.6,.35,3.6,{color:0x747f70,shell:true});
 // Base: low rails guide returning balls; isolated blocks create readable rebounds.
 // Keep the launch corridor open, with obstacles grounded rather than tall tunnels.
 for(const side of [-1,1]){
  for(let row=0;row<3;row++)b('base',side*4.15,.28,3.7+row*.82,.65,.56,.76,{color:0xb9bbbe});
- b('base',side*3.5,.34,8.9,1.9,.68,.4,{rotation:[0,side*.4,0],color:0xbfc1c4});
+ add('base','piston',[side*2.6,-.82,9.8],[.85],{defender:side<0?0:1,color:0xbfc1c4});
  add('base','bumper',[side*4.1,.45,8.3],[.32,.75],{bonus:'bumper',color:0xbfc1c4});
 }
 b('base',-3.8,.42,2.8,.95,.84,.9,{color:0xc3c5c8});
@@ -78,7 +79,11 @@ add('upper','bell',[.6,8.0,1.7],[.42,.55],{suspended:true,anchor:[.6,10.5,1.7],b
 add('upper','bell',[-2.7,4.8,2.0],[.37,.5],{suspended:true,anchor:[-2.7,6.05,2.0],bonus:'bell',color:0x9ea4a6});
 add('upper','bell',[3.25,6.15,2.0],[.37,.5],{suspended:true,anchor:[3.25,7.55,2.0],bonus:'bell',color:0xbac0c1});
 add('upper','box',[-3.6,8.65,1.8],[.65,.65,.65],{suspended:true,anchor:[-3.6,10.6,1.8],crate:true,color:0xafbaa0});
+// A small optional destructible wall, with a shelf fixed to the back panel.
+for(const side of [-1,1])b('upper',side*3.8,2.72,.62,1.6,.25,1.45,{tutorialWall:true,color:0x727272});
+for(const side of [-1,1])for(let row=0;row<3;row++)b('upper',side*3.8,3.25+row*.84,.68,1.3,.78,1.15,{breakable:true,tutorialWall:true,color:0xb7aea0});
 for(const item of LEVEL){
+ if(item.side==='upper'&&item.shape==='box'&&item.size[0]===1.25&&!item.shell)item.breakable=true;
  const c=item.color,r=(c>>16)&255,g=(c>>8)&255,b=c&255;
  const v=Math.round((r+g+b)/3);item.color=(v<<16)|(v<<8)|v;
 }
@@ -98,7 +103,7 @@ export function hingeSegments(angle) {
  return out;
 }
 export function launchVelocity(power=72,aim=0) {
- const speed=12+power*.15,a=aim*Math.PI/180;
+ const speed=12+power*.15+Math.max(0,power-72)*.12,a=aim*Math.PI/180;
  return {x:Math.sin(a)*speed,y:.8,z:-Math.cos(a)*speed};
 }
 
@@ -110,13 +115,14 @@ export const LESSONS = [
  {name:'O playground',hint:'Usa tudo o que aprendeste para conquistar os três alvos.',targets:3,saves:0},
 ];
 export function piecesForLesson(level=5){
- if(level>=5)return LEVEL;
+ if(level>=5)return LEVEL.filter(p=>!p.tutorialWall);
  const lesson=LESSONS[level-1];
  return LEVEL.filter(p=>{
   if(p.shell)return true;
+  if(p.tutorialWall)return level===2||level===3;
   if(p.target!==undefined)return p.target<lesson.targets;
   // Keep a pair of low guide rails; no wall of decorative blocks in the first box.
-  if(p.side==='base'&&p.shape==='box'&&p.pos[2]===8.9)return true;
+  if(p.defender!==undefined)return level>=3;
   if(level===2&&p.side==='base'&&p.shape==='bumper')return true;
   if(level===4){
    if(['bell','hoop','bumper'].includes(p.shape))return true;

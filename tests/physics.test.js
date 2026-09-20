@@ -23,7 +23,7 @@ test('A scored target is not counted twice; resetting keeps the original ball',(
  const s=new Simulation();try{const handle=s.ball.handle;for(let shot=0;shot<2;shot++){s.resetBall();s.launch(72,0);advance(s,600);}assert.equal(s.score,100);assert.equal(s.targets.size,1);s.resetBall();assert.equal(s.ball.handle,handle);assert.deepEqual({...s.ball.translation()},{x:Math.fround(SPAWN.x),y:Math.fround(SPAWN.y),z:Math.fround(SPAWN.z)});assert.equal(s.state,'ready');assert.equal(s.launch(),true);assert.equal(s.launch(),false);}finally{s.dispose();}
 });
 test('Moving hinge rotates the actual upper colliders, preserves the ball and stays finite in flight',()=>{
- const s=new Simulation();try{const handle=s.ball.handle;const target=[...s.colliders.entries()].find(([,i])=>i.target===2);const start=s.world.getCollider(target[0]).translation();s.launch(72,3);s.setAngle(180);advance(s,210);assert.equal(s.angle,180);const end=s.world.getCollider(target[0]).translation();assert.ok(Math.abs(start.y-end.y)>8);assert.ok(end.z< -8);assert.equal(s.ball.handle,handle);for(const v of Object.values(s.ball.translation()))assert.ok(Number.isFinite(v));assert.equal(s.world.bodies.len(),13);}finally{s.dispose();}
+ const s=new Simulation();try{const handle=s.ball.handle;const target=[...s.colliders.entries()].find(([,i])=>i.target===2);const start=s.world.getCollider(target[0]).translation();s.launch(72,3);s.setAngle(180);advance(s,210);assert.equal(s.angle,180);const end=s.world.getCollider(target[0]).translation();assert.ok(Math.abs(start.y-end.y)>8);assert.ok(end.z< -8);assert.equal(s.ball.handle,handle);for(const v of Object.values(s.ball.translation()))assert.ok(Number.isFinite(v));assert.equal(s.world.bodies.len(),15);}finally{s.dispose();}
 });
 test('Quarter pipe has no physical gap at either tangent',()=>{
  for(const a of [90,120,150]){const parts=hingeSegments(a);assert.equal(parts.length,24);const first=parts[0],last=parts.at(-1);assert.ok(Math.abs(first.pos[1]+.08)<.01);const inverse=transformUpper(last.pos,180-a);assert.ok(Math.abs(inverse.z+.08)<.01);}
@@ -35,16 +35,16 @@ test('Pendulums are constrained and props have simulated mass',()=>{
 test('Construction kit and timestep are complete',()=>{for(const shape of ['box','arch','hoop','target','bumper','bell'])assert.ok(LEVEL.some(p=>p.shape===shape));assert.ok(LEVEL.length>=80);assert.equal(STEP,1/120);});
 
 test('Ignoring the returning ball drains five lives exactly once each, then game over',()=>{
- const s=new Simulation();try{const handle=s.ball.handle;for(let life=5;life>0;life--){assert.equal(s.lives,life);assert.equal(s.launch(72,0),true);for(let i=0;i<7200&&s.state==='flying';i++)s.step();assert.equal(s.lives,life-1);assert.equal(s.state,life===1?'gameover':'lost');advance(s,100);assert.equal(s.lives,life-1);assert.equal(s.ball.handle,handle);if(life>1)assert.equal(s.nextBall(),true);}assert.equal(s.launch(),false);assert.equal(s.nextBall(),false);}finally{s.dispose();}
+ const s=new Simulation();try{const handle=s.ball.handle;for(let life=5;life>0;life--){assert.equal(s.lives,life);assert.equal(s.launch(72,0),true);s.ball.setTranslation({x:2,y:.4,z:11.8},true);s.ball.setLinvel({x:0,y:0,z:4},true);for(let i=0;i<7200&&s.state==='flying';i++)s.step();assert.equal(s.lives,life-1);assert.equal(s.state,life===1?'gameover':'lost');advance(s,100);assert.equal(s.lives,life-1);assert.equal(s.ball.handle,handle);if(life>1)assert.equal(s.nextBall(),true);}assert.equal(s.launch(),false);assert.equal(s.nextBall(),false);}finally{s.dispose();}
 });
 test('A timed character headbutt makes physical contact and sends the SAME ball back',()=>{
  const s=new Simulation();try{const handle=s.ball.handle;s.launch(72,0);let pressed=false,saved=false;for(let i=0;i<1000;i++){const p=s.ball.translation(),v=s.ball.linvel();if(!pressed&&s.shotTime>1&&v.z>0&&p.z>8.5){assert.equal(s.headbutt(0),true);assert.equal(s.headbutt(0),false);pressed=true;}const events=s.step();if(events.some(e=>e.type==='save')){saved=true;assert.ok(s.ball.linvel().z< -18);assert.equal(s.lives,5);assert.equal(s.saves,1);assert.equal(s.ball.handle,handle);break;}}assert.equal(saved,true);const crossings=s.crossings;advance(s,90);assert.ok(s.crossings>crossings,'Saved ball traverses the hinge again');}finally{s.dispose();}
 });
 test('A headbutt at the wrong time is a miss, without remotely saving the ball',()=>{
- const s=new Simulation();try{s.launch();s.headbutt(0);s.headbutt(1);advance(s,100);assert.equal(s.saves,0);assert.equal(s.lives,5);for(let i=0;i<1000&&s.state==='flying';i++)s.step();assert.equal(s.state,'lost');assert.equal(s.saves,0);assert.equal(s.lives,4);}finally{s.dispose();}
+ const s=new Simulation();try{s.launch();s.headbutt(0);s.headbutt(1);advance(s,100);assert.equal(s.saves,0);assert.equal(s.lives,5);for(let i=0;i<1000&&s.state==='flying';i++)s.step();assert.equal(s.state,'recovering');advance(s,60);assert.equal(s.state,'ready');assert.equal(s.saves,0);assert.equal(s.lives,5);}finally{s.dispose();}
 });
 test('Characters patrol predictably and targets survive a lost life',()=>{
- const s=new Simulation();try{const before={...s.characters[0].body.translation()};advance(s,180);assert.ok(Math.abs(before.x-s.characters[0].body.translation().x)>.5);s.launch();for(let i=0;i<1500&&s.state==='flying';i++)s.step();assert.ok(s.targets.has(0));s.nextBall();assert.ok(s.targets.has(0));assert.equal(s.lives,4);assert.equal(s.state,'ready');assert.equal(s.headbutt(0),false);}finally{s.dispose();}
+ const s=new Simulation();try{const before={...s.characters[0].body.translation()};advance(s,180);assert.ok(Math.abs(before.x-s.characters[0].body.translation().x)>.5);s.launch();for(let i=0;i<1500&&s.state==='flying';i++)s.step();assert.ok(s.targets.has(0));advance(s,60);s.launch();s.ball.setTranslation({x:2,y:.4,z:11.8},true);s.ball.setLinvel({x:0,y:0,z:4},true);advance(s,60);s.nextBall();assert.ok(s.targets.has(0));assert.equal(s.lives,4);assert.equal(s.state,'ready');assert.equal(s.headbutt(0),false);}finally{s.dispose();}
 });
 test('Bells ring on repeated physical hits, swing, and award their bonus only once',()=>{
  const s=new Simulation();try{
@@ -87,4 +87,31 @@ test('Learning box 3 waits for an actual save after hitting the target',()=>{
    if(!pressed&&s.shotTime>1&&v.z>0&&p.z>8.5){s.headbutt(0);pressed=true;}s.step();}
   assert.equal(targetBeforeSave,true);assert.equal(s.state,'won');assert.equal(s.saves,1);
  }finally{s.dispose();}
+});
+test('Holding a positioned defender saves by real contact and finishes the defence lesson',()=>{
+ const s=new Simulation(90,3);try{s.moveCharacter(0,-.75);advance(s,180);s.launch();s.setDefending(0,true);for(let i=0;i<1500&&s.state==='flying';i++)s.step();assert.equal(s.state,'won');assert.equal(s.saves,1);}finally{s.dispose();}
+});
+test('A won ball continues its real rebound before settling, without extra scoring',()=>{
+ const s=new Simulation(90,1);try{s.launch();while(s.state==='flying')s.step();assert.equal(s.state,'won');const p={...s.ball.translation()},score=s.score;advance(s,45);const q=s.ball.translation();assert.ok(Math.hypot(q.x-p.x,q.y-p.y,q.z-p.z)>.1);assert.equal(s.score,score);assert.equal(s.lives,5);}finally{s.dispose();}
+});
+test('Magazine feeds the same rigid body continuously into the launcher',()=>{
+ const s=new Simulation(90,1);try{const body=s.ball.handle,count=s.world.bodies.len();s.beginFeed();assert.equal(s.launch(),false);let p={...s.ball.translation()};for(let i=0;i<100;i++){s.step();const q=s.ball.translation();assert.ok(Math.hypot(q.x-p.x,q.y-p.y,q.z-p.z)<.1);p={...q};assert.equal(s.ball.handle,body);assert.equal(s.world.bodies.len(),count);}assert.equal(s.state,'ready');assert.equal(s.launch(),true);}finally{s.dispose();}
+});
+
+test('A real ball impact fractures a brick into eight finite moving rigid bodies',()=>{
+ const s=new Simulation(90,2);try{
+  const brick=s.levelPieces.find(p=>p.breakable);s.launch();
+  s.ball.setTranslation({x:brick.pos[0],y:brick.pos[1],z:brick.pos[2]+2},true);
+  s.ball.setLinvel({x:0,y:0,z:-14},true);let broke=false;
+  for(let i=0;i<40;i++)if(s.step().some(e=>e.type==='break')){broke=true;break;}
+  assert.ok(broke);assert.ok(s.broken.has(brick.id));assert.ok(s.fragments.length>=8);
+  const first=s.fragments[0],before={...first.body.translation()};advance(s,30);
+  assert.ok(Math.hypot(first.body.translation().x-before.x,first.body.translation().y-before.y,first.body.translation().z-before.z)>.02);
+  for(const f of s.fragments)assert.ok(Object.values(f.body.translation()).every(Number.isFinite));
+  assert.equal(s.ball.userData.kind,'ball');
+ }finally{s.dispose();}
+});
+
+test('Returning to the launch circle recovers the same ball without spending a life',()=>{
+ const s=new Simulation(90,2);try{const handle=s.ball.handle;s.launch();s.shotTime=1;s.ball.setTranslation({x:.2,y:.4,z:9.5},true);s.ball.setLinvel({x:0,y:0,z:4},true);advance(s,90);assert.equal(s.state,'ready');assert.equal(s.lives,5);assert.equal(s.ball.handle,handle);assert.equal(s.launch(100,0),true);assert.ok(-s.ball.linvel().z>30);assert.ok(s.ballCollider.restitution()>.6);}finally{s.dispose();}
 });

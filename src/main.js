@@ -26,7 +26,7 @@ function showResult(won){
 let lessonIndex=lab?5:1;
 let sim,graphics,power=72,aim=0,desiredAngle=90,showPath=true,overview=true,predictionDirty=true,predictionAt=0,predictionAngle=-1,paused=false;
 let openingPhase=lab?'playing':'closed',openingTime=0;
-let audioContext,audioOn=true,lastTone=0,toastTimer,resetAt=0;
+let audioContext,audioOn=true,lastTone=0,toastTimer,resetAt=0,resultDelay=0;
 function sound(type,item,intensity=1){
  if(!audioOn)return;
  try{audioContext??=new (window.AudioContext||window.webkitAudioContext)();audioContext.resume();const t=audioContext.currentTime;if(type!=='bell'&&t-lastTone<.07)return;lastTone=t;
@@ -42,7 +42,7 @@ function sound(type,item,intensity=1){
 }
 function toast(message){$('#toast').textContent=message;$('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),2200);}
 function updateControls(){
- $('#power').value=power;$('#power-value').innerHTML=`${Math.round(power)}<span>%</span>`;$('#aim').value=aim;$('#aim-value').textContent=`${aim>0?'+':''}${aim.toFixed(0)}°`;
+ $('#shot-strength').value=power;$('#shot-strength-value').textContent=`${Math.round(power)}%`;if(graphics)graphics.aimPower=power;$('#power').value=power;$('#power-value').innerHTML=`${Math.round(power)}<span>%</span>`;$('#aim').value=aim;$('#aim-value').textContent=`${aim>0?'+':''}${aim.toFixed(0)}°`;
  $('#angle').value=desiredAngle;$('#angle-value').textContent=`${Math.round(desiredAngle)}°`;
  document.querySelectorAll('[data-angle]').forEach(b=>b.classList.toggle('active',Number(b.dataset.angle)===desiredAngle));
  const radians=(180-desiredAngle)*Math.PI/180;$('#hinge-arm').setAttribute('d',`M34 75L${34-63*Math.cos(radians)} ${75-63*Math.sin(radians)}`);
@@ -54,16 +54,16 @@ function updateHUD(){
  $('#score').textContent=String(sim.score).padStart(4,'0');$('#hits').textContent=`${sim.targets.size} / ${sim.lesson.targets}`;$('#shots').textContent=String(sim.shots).padStart(2,'0');
  for(let i=0;i<3;i++){$(`#goal-${i}`).hidden=i>=sim.lesson.targets;$(`#target-${i}`).classList.toggle('hit',sim.targets.has(i));$(`#goal-${i}`).classList.toggle('hit',sim.targets.has(i));}
  $('#player-score').textContent=String(sim.score).padStart(4,'0');$('#lives').textContent='● '.repeat(sim.lives).trim()||'—';$('#lives-label').textContent=`${sim.lives} ${sim.lives===1?'BOLA':'BOLAS'}`;
- sim.characters.forEach((c,i)=>{const name=i===0?'bico':'bola';$('#'+name).disabled=!['ready','flying'].includes(sim.state);$('#'+name+'-state').textContent=sim.state!=='flying'?'À ESPERA DA BOLA':c.cooldown>0?'A RECUPERAR…':'TOCA PARA SALVAR';});
- $('#play-instruction').textContent=sim.state==='ready'?sim.lesson.hint:sim.state==='flying'?(sim.level<3?'Segue a bola até ao alvo.':'Arrasta uma personagem. Solta para devolver a bola.'):sim.state==='lost'?'Uma escapou. Os alvos mantêm-se.':(sim.state==='won'&&sim.level<5?'Continua para a próxima caixa.':'Toca em jogar outra vez para recomeçar.');
- $('#phase').textContent={ready:'PRONTO A LANÇAR',flying:'BOLA EM JOGO',lost:'UMA BOLA ESCAPOU',gameover:'FIM DA PARTIDA',won:'NÍVEL COMPLETO'}[sim.state];
+ sim.characters.forEach((c,i)=>{const name=i===0?'bico':'bola';$('#'+name).disabled=!['ready','flying'].includes(sim.state);$('#'+name+'-state').textContent=sim.state!=='flying'?'À ESPERA DA BOLA':c.cooldown>0?'A RECUPERAR…':'PREME PARA DEFENDER';});
+ $('#play-instruction').textContent=sim.state==='ready'?sim.lesson.hint:sim.state==='recovering'?'Bola recuperada — podes voltar a lançar.':sim.state==='feeding'?'A carregar a próxima bola…':sim.state==='flying'?(sim.level<3?'Segue a bola até ao alvo.':'Arrasta para posicionar. Mantém premido para defender.'):sim.state==='lost'?'Uma escapou. Os alvos mantêm-se.':(sim.state==='won'&&sim.level<5?'Continua para a próxima caixa.':'Toca em jogar outra vez para recomeçar.');
+ $('#phase').textContent={recovering:'BOLA RECUPERADA',feeding:'A CARREGAR',ready:'PRONTO A LANÇAR',flying:'BOLA EM JOGO',lost:'UMA BOLA ESCAPOU',gameover:'FIM DA PARTIDA',won:'NÍVEL COMPLETO'}[sim.state];
  $('#launch').disabled=sim.state!=='ready';$('#aim-hint').style.opacity=sim.state==='ready'?'1':'0';
  $('#ball-location').textContent=`BOLA / ${sim.inUpper?'CAIXA SUPERIOR':'BASE'}`;$('#seam-angle').textContent=`${Math.round(sim.angle)}°`;
 }
 function launch(){if(openingPhase!=='playing')return;if(sim.launch(power,aim)){sound('launch');resetAt=0;updateHUD();}}
 function reset(){if(sim.state==='won'||sim.state==='gameover'){restart();return;}sim.resetBall();resetAt=0;predictionDirty=true;$('#victory').hidden=true;updateHUD();}
 function fold(value){desiredAngle=Number(value);sim.setAngle(desiredAngle);predictionDirty=true;updateControls();}
-function restart(){sim.dispose();graphics.dispose();sim=new Simulation(desiredAngle,lessonIndex);graphics=new Graphics($('#game'),sim);graphics.showPath=showPath;graphics.overview=overview;predictionDirty=true;resetAt=0;$('#victory').hidden=true;nextQuip=6;speechUntil.fill(0);updateControls();updateHUD();prepareBox();}
+function restart(){resultDelay=0;sim.dispose();graphics.dispose();sim=new Simulation(desiredAngle,lessonIndex);graphics=new Graphics($('#game'),sim);graphics.showPath=showPath;graphics.overview=overview;predictionDirty=true;resetAt=0;$('#victory').hidden=true;nextQuip=6;speechUntil.fill(0);updateControls();updateHUD();prepareBox();}
 function prepareBox(){
  clearTimeout(toastTimer);$('#toast').classList.remove('visible');
  openingPhase=lab?'playing':'closed';openingTime=0;graphics.setOpening(lab?1:0);
@@ -75,6 +75,7 @@ async function start(){
  await initPhysics();sim=new Simulation(desiredAngle,lessonIndex);graphics=new Graphics($('#game'),sim);graphics.overview=overview;$('#stage').classList.add('overview');$('#loading').remove();graphics.setOpening(lab?1:0);$('#box-intro').hidden=lab;document.body.classList.toggle('opening-box',!lab);prepareBox();
  $('#open-box').addEventListener('click',()=>{if(openingPhase!=='closed')return;openingPhase='opening';openingTime=0;$('#open-box').disabled=true;$('#open-box').textContent='A abrir…';sound('launch');});updateControls();updateHUD();
  $('#angle').addEventListener('input',e=>fold(e.target.value));document.querySelectorAll('[data-angle]').forEach(b=>b.addEventListener('click',()=>fold(b.dataset.angle)));
+ $('#shot-strength').addEventListener('input',e=>{power=Number(e.target.value);predictionDirty=true;updateControls();});
  $('#power').addEventListener('input',e=>{power=Number(e.target.value);predictionDirty=true;updateControls();});$('#aim').addEventListener('input',e=>{aim=Number(e.target.value);predictionDirty=true;updateControls();});
  $('#trajectory').addEventListener('change',e=>{showPath=e.target.checked;graphics.showPath=showPath;predictionDirty=true;});
  $('#launch').addEventListener('click',launch);$('#reset').addEventListener('click',reset);$('#restart').addEventListener('click',restart);$('#again').addEventListener('click',()=>{if(sim.state==='won'&&lessonIndex<5)lessonIndex++;restart();});
@@ -82,28 +83,29 @@ async function start(){
  for(const id of ['#help','#player-help'])$(id).addEventListener('click',()=>{$('#help-dialog').showModal();paused=true;});
  for(const [id,index]of [['#bico',0],['#bola',1]]){
   const button=$(id);let slide=null;
-  button.addEventListener('pointerdown',e=>{if(!e.isPrimary||openingPhase!=='playing')return;e.preventDefault();slide={x:e.clientX,start:sim.characters[index].body.translation().x,id:e.pointerId};button.setPointerCapture(e.pointerId);});
+  button.addEventListener('pointerdown',e=>{if(!e.isPrimary||openingPhase!=='playing')return;e.preventDefault();sim.setDefending(index,true);defend(index);slide={x:e.clientX,start:sim.characters[index].body.translation().x,id:e.pointerId};button.setPointerCapture(e.pointerId);});
   button.addEventListener('pointermove',e=>{if(!slide||slide.id!==e.pointerId)return;sim.moveCharacter(index,slide.start+(e.clientX-slide.x)/$('#game').getBoundingClientRect().width*10);});
-  button.addEventListener('pointerup',e=>{if(!slide||slide.id!==e.pointerId)return;slide=null;button.releasePointerCapture(e.pointerId);defend(index);});
-  button.addEventListener('pointercancel',()=>{slide=null;});
+  button.addEventListener('pointerup',e=>{if(!slide||slide.id!==e.pointerId)return;sim.setDefending(index,false);slide=null;button.releasePointerCapture(e.pointerId);defend(index);});
+  button.addEventListener('pointercancel',()=>{sim.setDefending(index,false);slide=null;});
  }
  for(const [id,index]of [['#bico',0],['#bola',1]])$(id).addEventListener('click',e=>{if(e.detail===0)defend(index);});$('#close-help').addEventListener('click',()=>$('#help-dialog').close());$('#help-dialog').addEventListener('close',()=>paused=false);
  $('#sound').addEventListener('click',()=>{audioOn=!audioOn;$('#sound').classList.toggle('muted',!audioOn);$('#sound').title=audioOn?'Som ligado':'Som desligado';$('#sound span').textContent=audioOn?'ON':'OFF';$('#sound').setAttribute('aria-label',audioOn?'Desativar som':'Ativar som');sound('target');});
  let drag=null,crewDrag=null;const canvas=$('#game');
- canvas.addEventListener('pointerdown',e=>{if(!e.isPrimary||openingPhase!=='playing')return;e.preventDefault();const r=canvas.getBoundingClientRect();if(sim.level>=3&&['ready','flying'].includes(sim.state)){if(!overview&&e.clientY<r.top+r.height/2)return;const x=e.clientX-r.left,y=e.clientY-r.top;let best=-1,distance=Math.max(24,Math.min(36,r.width*.08));for(let i=0;i<2;i++){const p=graphics.characterScreen(i),d=Math.hypot(x-p.x,y-(p.y+12));if(d<distance){best=i;distance=d;}}if(best>=0){crewDrag={index:best,x:e.clientX,start:sim.characters[best].body.translation().x,id:e.pointerId};canvas.setPointerCapture(e.pointerId);return;}if(sim.state==='flying')return;}if(sim.state!=='ready'||(!overview&&e.clientY<r.top+r.height/2))return;drag={x:e.clientX,y:e.clientY,power,aim,id:e.pointerId};canvas.setPointerCapture(e.pointerId);});
+ canvas.addEventListener('pointerdown',e=>{if(!e.isPrimary||openingPhase!=='playing')return;e.preventDefault();const r=canvas.getBoundingClientRect();if(sim.level>=3&&['ready','flying'].includes(sim.state)){if(!overview&&e.clientY<r.top+r.height/2)return;const x=e.clientX-r.left,y=e.clientY-r.top;let best=-1,distance=Math.max(24,Math.min(36,r.width*.08));for(let i=0;i<2;i++){const p=graphics.characterScreen(i),f=graphics.padScreen(i),d=Math.min(Math.hypot(x-p.x,y-(p.y+12)),f?Math.hypot(x-f.x,y-f.y):Infinity);if(d<distance){best=i;distance=d;}}if(best>=0){sim.setDefending(best,true);defend(best);crewDrag={index:best,x:e.clientX,start:sim.characters[best].body.translation().x,id:e.pointerId};canvas.setPointerCapture(e.pointerId);return;}if(sim.state==='flying')return;}if(sim.state!=='ready'||(!overview&&e.clientY<r.top+r.height/2))return;$('#shot-power').hidden=false;drag={x:e.clientX,y:e.clientY,power,aim,id:e.pointerId};canvas.setPointerCapture(e.pointerId);});
  canvas.addEventListener('pointermove',e=>{if(crewDrag?.id===e.pointerId){sim.moveCharacter(crewDrag.index,crewDrag.start+(e.clientX-crewDrag.x)/canvas.getBoundingClientRect().width*10);return;}if(!drag||drag.id!==e.pointerId)return;const r=canvas.getBoundingClientRect();aim=Math.max(-28,Math.min(28,drag.aim+(e.clientX-drag.x)/r.width*65));power=Math.max(25,Math.min(100,drag.power+(e.clientY-drag.y)/r.height*120));predictionDirty=true;updateControls();});
- canvas.addEventListener('pointerup',e=>{if(crewDrag?.id===e.pointerId){const index=crewDrag.index;crewDrag=null;canvas.releasePointerCapture(e.pointerId);defend(index);return;}if(!drag||drag.id!==e.pointerId)return;drag=null;canvas.releasePointerCapture(e.pointerId);launch();});canvas.addEventListener('pointercancel',()=>{drag=null;crewDrag=null;});
+ canvas.addEventListener('pointerup',e=>{if(crewDrag?.id===e.pointerId){const index=crewDrag.index;sim.setDefending(index,false);crewDrag=null;canvas.releasePointerCapture(e.pointerId);defend(index);return;}if(!drag||drag.id!==e.pointerId)return;drag=null;$('#shot-power').hidden=true;canvas.releasePointerCapture(e.pointerId);launch();});canvas.addEventListener('pointercancel',()=>{drag=null;if(crewDrag)sim.setDefending(crewDrag.index,false);crewDrag=null;$('#shot-power').hidden=true;});
  document.addEventListener('keydown',e=>{if(openingPhase!=='playing')return;if(!$('#help-dialog').open&&['KeyA','KeyD'].includes(e.code)&&!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){e.preventDefault();if(!e.repeat)defend(e.code==='KeyA'?0:1);return;}if($('#help-dialog').open||['INPUT','BUTTON','A'].includes(document.activeElement.tagName))return;if(['Space','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','KeyR'].includes(e.code))e.preventDefault();if(e.code==='Space')launch();if(e.code==='KeyR'&&lab)reset();if(e.code==='ArrowLeft')aim=Math.max(-28,aim-1);if(e.code==='ArrowRight')aim=Math.min(28,aim+1);if(e.code==='ArrowUp')power=Math.min(100,power+2);if(e.code==='ArrowDown')power=Math.max(25,power-2);predictionDirty=true;updateControls();});
  new ResizeObserver(()=>graphics.resize()).observe($('#stage'));
  document.addEventListener('visibilitychange',()=>{accumulator=0;last=performance.now();});
  let last=performance.now(),accumulator=0,lastHUD=0;
  function tick(now){
   requestAnimationFrame(tick);const dt=Math.min((now-last)/1000,.065);last=now;
-  if(openingPhase==='opening'&&!document.hidden){openingTime+=dt;graphics.setOpening(Math.min(1,openingTime/2.2));if(openingTime>=2.2){openingPhase='playing';$('#box-intro').hidden=true;document.body.classList.remove('opening-box');predictionDirty=true;}}
+  if(openingPhase==='opening'&&!document.hidden){openingTime+=dt;graphics.setOpening(Math.min(1,openingTime/2.2));if(openingTime>=2.2){openingPhase='playing';sim.beginFeed();$('#box-intro').hidden=true;document.body.classList.remove('opening-box');predictionDirty=true;}}
   if(!paused&&!document.hidden&&openingPhase==='playing'){accumulator+=dt;while(accumulator>=STEP){
    const events=sim.step();for(const event of events){
-    if(event.type==='target'){graphics.hit(event.item);toast(sim.targets.size===sim.lesson.targets&&sim.lesson.saves>sim.saves?'Agora devolve a bola com uma cabeçada!':sim.targets.size===sim.lesson.targets-1&&sim.lesson.targets>1?'Só falta um alvo!':`Alvo ${event.item.target+1} · +${event.item.points} pontos`);sound('target');}
+    if(event.type==='target'){graphics.hit(event.item);toast(sim.targets.size===sim.lesson.targets&&sim.lesson.saves>sim.saves?'Agora devolve a bola com uma almofada!':sim.targets.size===sim.lesson.targets-1&&sim.lesson.targets>1?'Só falta um alvo!':`Alvo ${event.item.target+1} · +${event.item.points} pontos`);sound('target');}
     if(['bell','hoop','bumper'].includes(event.type)){graphics.hit(event.item);toast({bell:'Ding! · +50 pontos',hoop:'Cesto! · +75 pontos',bumper:'Bumper · +10 pontos'}[event.type]);if(event.type!=='bell')sound(event.type);}
+    if(event.type==='break'){toast('Tijolo partido · +20 pontos');sound('impact');}
     if(event.type==='crossing'){sound('crossing');}
     if(event.type==='ring'){graphics.ring(event.item,event.intensity);sound('bell',event.item,event.intensity);}
     if(event.type==='impact'&&event.item?.shape!=='bell')sound('impact');
@@ -111,10 +113,13 @@ async function start(){
     if(event.type==='lost'){resetAt=now+1100;say(sim.lives%2,'Ups… era tua, não era?');sound('impact');}
     if(event.type==='gameover')showResult(false);
     if(event.type==='unstuck')toast('Desencalhada — sem perder bola.');
-    if(event.type==='won'){showResult(true);sound('won');}
+    if(event.type==='won'){resultDelay=2.4;toast('Boa!');sound('won');}
+    if(event.type==='recovered')toast('Bola recuperada · sem perder vida');
+    if(event.type==='loaded'){predictionDirty=true;updateHUD();}
    }accumulator-=STEP;
   }}
-  if(resetAt&&now>resetAt&&!paused){if(sim.nextBall()){predictionDirty=true;updateHUD();}resetAt=0;}
+  if(resultDelay>0&&!paused&&!document.hidden){resultDelay-=dt;if(resultDelay<=0)showResult(true);}
+  if(resetAt&&now>resetAt&&!paused){if(sim.nextBall()){sim.beginFeed();predictionDirty=true;updateHUD();}resetAt=0;}
   if(sim.level>=3&&sim.time>nextQuip&&sim.state==='ready'){const i=Math.floor(sim.time/6)%2;say(i,i===0?'Essa era a tua melhor?':'Eu fazia melhor… acho.');nextQuip=sim.time+10;}
   for(let i=0;i<2;i++){const el=$('#speech-'+i);if(sim.time>=speechUntil[i])el.hidden=true;else{const p=graphics.characterScreen(i);el.style.left=`${p.x}px`;el.style.top=`${p.y}px`;}}
   if(sim.state==='ready'&&showPath&&(predictionDirty||Math.abs(sim.angle-predictionAngle)>.005)&&now-predictionAt>130){graphics.setTrajectory(sim.predict(power,aim));predictionDirty=false;predictionAt=now;predictionAngle=sim.angle;}
