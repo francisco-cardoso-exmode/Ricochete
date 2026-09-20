@@ -58,3 +58,19 @@ test('Bells ring on repeated physical hits, swing, and award their bonus only on
   assert.ok(rings>=2,'Every separated hit rings');assert.equal(bonuses,1,'No score farming');assert.ok(maxMotion>.03,'Bell physically swings');
  }finally{s.dispose();}
 });
+test('Manual defenders move smoothly, stay in their half and hold the chosen position',()=>{
+ const s=new Simulation();try{
+  const start=s.characters[0].body.translation().x;s.moveCharacter(0,-100);s.step();assert.ok(Math.abs(s.characters[0].body.translation().x-start)<=9*STEP+.001);
+  advance(s,120);assert.ok(Math.abs(s.characters[0].body.translation().x+4.25)<.001);
+  s.moveCharacter(0,-2.8);s.moveCharacter(1,2.7);advance(s,120);
+  assert.ok(Math.abs(s.characters[0].body.translation().x+2.8)<.001);assert.ok(Math.abs(s.characters[1].body.translation().x-2.7)<.001);
+  advance(s,120);assert.ok(Math.abs(s.characters[0].body.translation().x+2.8)<.001);
+  s.moveCharacter(0,100);s.moveCharacter(1,-100);advance(s,120);
+  assert.ok(s.characters[0].body.translation().x<=-.749);assert.ok(s.characters[1].body.translation().x>=.749);
+ }finally{s.dispose();}
+});
+test('Prediction still matches live movement after manually positioning defenders',()=>{
+ const s=new Simulation();try{s.moveCharacter(0,-3.5);s.moveCharacter(1,3.5);const path=s.predict(72,0,.8);s.launch();let sample=0;
+  for(let i=0;i<96;i++){s.step();if(i%4===0){const p=s.ball.translation(),q=path[sample++];assert.ok(Math.hypot(p.x-q.x,p.y-q.y,p.z-q.z)<.003);}}
+ }finally{s.dispose();}
+});

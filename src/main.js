@@ -9,10 +9,20 @@ import { Graphics } from './graphics.js';
 import { STEP } from './level.js';
 const $=s=>document.querySelector(s);
 const lab=new URLSearchParams(location.search).has('lab');document.body.className=lab?'lab':'player';
+if(!lab){
+ for(const type of ['gesturestart','gesturechange','gestureend'])document.addEventListener(type,e=>e.preventDefault(),{passive:false});
+ document.addEventListener('touchstart',e=>{if(e.touches.length>1)e.preventDefault();},{passive:false});
+}
 const speechUntil=[0,0];let nextQuip=6;
 function say(index,text){$('#speech-'+index).textContent=text;$('#speech-'+index).hidden=false;speechUntil[index]=sim.time+2.1;}
 function defend(index){if(sim.headbutt(index)){say(index,index===0?'Deixa comigo!':'Eu? Agora?!');sound('launch');}}
-function showResult(won){$('#victory').hidden=false;$('#result-label').textContent=won?'LEVEL 01 / COMPLETO':'FIM DA PARTIDA';$('#result-title').textContent=won?'Calaste as duas.':'Elas riem por último.';$('#result-text').textContent=won?`${sim.score} pontos · ${sim.saves} defesas. Os três alvos são teus.`:'As cinco bolas escaparam. Mais uma tentativa?';}
+let bestScore=0;try{bestScore=Number(localStorage.getItem('ricochete-best'))||0;}catch{}
+function showResult(won){
+ const newBest=sim.score>bestScore;bestScore=Math.max(bestScore,sim.score);try{localStorage.setItem('ricochete-best',String(bestScore));}catch{}
+ $('#victory').hidden=false;$('#result-label').textContent=won?'LEVEL 01 / COMPLETO':'FIM DA PARTIDA';
+ $('#result-title').textContent=won?'Calaste as duas.':'Quase. Mais uma?';
+ $('#result-text').textContent=`${sim.score} pontos · ${sim.saves} defesas. ${newBest?'Novo recorde!':'Recorde: '+bestScore+'.'} ${won?'Três alvos conquistados.':'Tenta outra vez.'}`;
+}
 let sim,graphics,power=72,aim=0,desiredAngle=90,showPath=true,overview=false,predictionDirty=true,predictionAt=0,predictionAngle=-1,paused=false;
 let audioContext,audioOn=true,lastTone=0,toastTimer,resetAt=0;
 function sound(type,item,intensity=1){
@@ -42,8 +52,8 @@ function updateHUD(){
  $('#score').textContent=String(sim.score).padStart(4,'0');$('#hits').textContent=`${sim.targets.size} / 3`;$('#shots').textContent=String(sim.shots).padStart(2,'0');
  for(let i=0;i<3;i++){$(`#target-${i}`).classList.toggle('hit',sim.targets.has(i));$(`#goal-${i}`).classList.toggle('hit',sim.targets.has(i));}
  $('#player-score').textContent=String(sim.score).padStart(4,'0');$('#lives').textContent='● '.repeat(sim.lives).trim()||'—';$('#lives-label').textContent=`${sim.lives} ${sim.lives===1?'BOLA':'BOLAS'}`;
- sim.characters.forEach((c,i)=>{const name=i===0?'bico':'bola';$('#'+name).disabled=sim.state!=='flying'||c.cooldown>0;$('#'+name+'-state').textContent=sim.state!=='flying'?'À ESPERA DA BOLA':c.cooldown>0?'A RECUPERAR…':'TOCA PARA SALVAR';});
- $('#play-instruction').textContent=sim.state==='ready'?'Arrasta na base e solta para lançar.':sim.state==='flying'?'Quando regressar, toca numa personagem para a salvar.':sim.state==='lost'?'Uma escapou. Os alvos mantêm-se.':'Toca em jogar outra vez para recomeçar.';
+ sim.characters.forEach((c,i)=>{const name=i===0?'bico':'bola';$('#'+name).disabled=!['ready','flying'].includes(sim.state);$('#'+name+'-state').textContent=sim.state!=='flying'?'À ESPERA DA BOLA':c.cooldown>0?'A RECUPERAR…':'TOCA PARA SALVAR';});
+ $('#play-instruction').textContent=sim.state==='ready'?'Arrasta na base e solta para lançar.':sim.state==='flying'?'Arrasta uma personagem. Solta para devolver a bola.':sim.state==='lost'?'Uma escapou. Os alvos mantêm-se.':'Toca em jogar outra vez para recomeçar.';
  $('#phase').textContent={ready:'PRONTO A LANÇAR',flying:'BOLA EM JOGO',lost:'UMA BOLA ESCAPOU',gameover:'FIM DA PARTIDA',won:'NÍVEL COMPLETO'}[sim.state];
  $('#launch').disabled=sim.state!=='ready';$('#aim-hint').style.opacity=sim.state==='ready'?'1':'0';
  $('#ball-location').textContent=`BOLA / ${sim.inUpper?'CAIXA SUPERIOR':'BASE'}`;$('#seam-angle').textContent=`${Math.round(sim.angle)}°`;
@@ -60,13 +70,19 @@ async function start(){
  $('#launch').addEventListener('click',launch);$('#reset').addEventListener('click',reset);$('#restart').addEventListener('click',restart);$('#again').addEventListener('click',restart);
  $('#overview').addEventListener('click',()=>{overview=!overview;graphics.overview=overview;$('#stage').classList.toggle('overview',overview);$('#overview').classList.toggle('active',overview);$('#overview span').textContent=overview?'Duas vistas':'Ver dobra';});
  for(const id of ['#help','#player-help'])$(id).addEventListener('click',()=>{$('#help-dialog').showModal();paused=true;});
- for(const [id,index]of [['#bico',0],['#bola',1]])$(id).addEventListener('pointerdown',e=>{e.preventDefault();defend(index);});
+ for(const [id,index]of [['#bico',0],['#bola',1]]){
+  const button=$(id);let slide=null;
+  button.addEventListener('pointerdown',e=>{if(!e.isPrimary)return;e.preventDefault();slide={x:e.clientX,start:sim.characters[index].body.translation().x,id:e.pointerId};button.setPointerCapture(e.pointerId);});
+  button.addEventListener('pointermove',e=>{if(!slide||slide.id!==e.pointerId)return;sim.moveCharacter(index,slide.start+(e.clientX-slide.x)/$('#game').getBoundingClientRect().width*10);});
+  button.addEventListener('pointerup',e=>{if(!slide||slide.id!==e.pointerId)return;slide=null;button.releasePointerCapture(e.pointerId);defend(index);});
+  button.addEventListener('pointercancel',()=>{slide=null;});
+ }
  for(const [id,index]of [['#bico',0],['#bola',1]])$(id).addEventListener('click',e=>{if(e.detail===0)defend(index);});$('#close-help').addEventListener('click',()=>$('#help-dialog').close());$('#help-dialog').addEventListener('close',()=>paused=false);
  $('#sound').addEventListener('click',()=>{audioOn=!audioOn;$('#sound span').textContent=audioOn?'ON':'OFF';$('#sound').setAttribute('aria-label',audioOn?'Desativar som':'Ativar som');sound('target');});
- let drag=null;const canvas=$('#game');
- canvas.addEventListener('pointerdown',e=>{const r=canvas.getBoundingClientRect();if(sim.state==='flying'){if(!overview&&e.clientY<r.top+r.height/2)return;const x=e.clientX-r.left,y=e.clientY-r.top;let best=-1,distance=60;for(let i=0;i<2;i++){const p=graphics.characterScreen(i),d=Math.hypot(x-p.x,y-(p.y+12));if(d<distance){best=i;distance=d;}}if(best>=0)defend(best);return;}if(sim.state!=='ready'||(!overview&&e.clientY<r.top+r.height/2))return;drag={x:e.clientX,y:e.clientY,power,aim,id:e.pointerId};canvas.setPointerCapture(e.pointerId);});
- canvas.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;const r=canvas.getBoundingClientRect();aim=Math.max(-28,Math.min(28,drag.aim+(e.clientX-drag.x)/r.width*65));power=Math.max(25,Math.min(100,drag.power+(e.clientY-drag.y)/r.height*120));predictionDirty=true;updateControls();});
- canvas.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;drag=null;canvas.releasePointerCapture(e.pointerId);launch();});canvas.addEventListener('pointercancel',()=>{drag=null;});
+ let drag=null,crewDrag=null;const canvas=$('#game');
+ canvas.addEventListener('pointerdown',e=>{if(!e.isPrimary)return;e.preventDefault();const r=canvas.getBoundingClientRect();if(['ready','flying'].includes(sim.state)){if(!overview&&e.clientY<r.top+r.height/2)return;const x=e.clientX-r.left,y=e.clientY-r.top;let best=-1,distance=60;for(let i=0;i<2;i++){const p=graphics.characterScreen(i),d=Math.hypot(x-p.x,y-(p.y+12));if(d<distance){best=i;distance=d;}}if(best>=0){crewDrag={index:best,x:e.clientX,start:sim.characters[best].body.translation().x,id:e.pointerId};canvas.setPointerCapture(e.pointerId);return;}if(sim.state==='flying')return;}if(sim.state!=='ready'||(!overview&&e.clientY<r.top+r.height/2))return;drag={x:e.clientX,y:e.clientY,power,aim,id:e.pointerId};canvas.setPointerCapture(e.pointerId);});
+ canvas.addEventListener('pointermove',e=>{if(crewDrag?.id===e.pointerId){sim.moveCharacter(crewDrag.index,crewDrag.start+(e.clientX-crewDrag.x)/canvas.getBoundingClientRect().width*10);return;}if(!drag||drag.id!==e.pointerId)return;const r=canvas.getBoundingClientRect();aim=Math.max(-28,Math.min(28,drag.aim+(e.clientX-drag.x)/r.width*65));power=Math.max(25,Math.min(100,drag.power+(e.clientY-drag.y)/r.height*120));predictionDirty=true;updateControls();});
+ canvas.addEventListener('pointerup',e=>{if(crewDrag?.id===e.pointerId){const index=crewDrag.index;crewDrag=null;canvas.releasePointerCapture(e.pointerId);defend(index);return;}if(!drag||drag.id!==e.pointerId)return;drag=null;canvas.releasePointerCapture(e.pointerId);launch();});canvas.addEventListener('pointercancel',()=>{drag=null;crewDrag=null;});
  document.addEventListener('keydown',e=>{if(!$('#help-dialog').open&&['KeyA','KeyD'].includes(e.code)&&!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){e.preventDefault();if(!e.repeat)defend(e.code==='KeyA'?0:1);return;}if($('#help-dialog').open||['INPUT','BUTTON','A'].includes(document.activeElement.tagName))return;if(['Space','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','KeyR'].includes(e.code))e.preventDefault();if(e.code==='Space')launch();if(e.code==='KeyR'&&lab)reset();if(e.code==='ArrowLeft')aim=Math.max(-28,aim-1);if(e.code==='ArrowRight')aim=Math.min(28,aim+1);if(e.code==='ArrowUp')power=Math.min(100,power+2);if(e.code==='ArrowDown')power=Math.max(25,power-2);predictionDirty=true;updateControls();});
  new ResizeObserver(()=>graphics.resize()).observe($('#stage'));
  document.addEventListener('visibilitychange',()=>{accumulator=0;last=performance.now();});
@@ -75,12 +91,12 @@ async function start(){
   requestAnimationFrame(tick);const dt=Math.min((now-last)/1000,.065);last=now;
   if(!paused&&!document.hidden){accumulator+=dt;while(accumulator>=STEP){
    const events=sim.step();for(const event of events){
-    if(event.type==='target'){graphics.hit(event.item);toast(`Alvo ${event.item.target+1} · +${event.item.points} pontos`);sound('target');}
+    if(event.type==='target'){graphics.hit(event.item);toast(sim.targets.size===2?'Só falta um alvo!':`Alvo ${event.item.target+1} · +${event.item.points} pontos`);sound('target');}
     if(['bell','hoop','bumper'].includes(event.type)){graphics.hit(event.item);toast({bell:'Ding! · +50 pontos',hoop:'Cesto! · +75 pontos',bumper:'Bumper · +10 pontos'}[event.type]);if(event.type!=='bell')sound(event.type);}
     if(event.type==='crossing'){sound('crossing');}
     if(event.type==='ring'){graphics.ring(event.item,event.intensity);sound('bell',event.item,event.intensity);}
     if(event.type==='impact'&&event.item?.shape!=='bell')sound('impact');
-    if(event.type==='save'){say(event.character,event.character===0?'Viste? Fácil.':'Foi sem querer!');toast('Cabeçada! +25');sound('target');}
+    if(event.type==='save'){say(event.character,event.character===0?'Viste? Fácil.':'Foi sem querer!');toast(event.rally>1?`${event.rally} defesas seguidas! +${event.points}`:`Boa defesa! +${event.points}`);sound('target');}
     if(event.type==='lost'){resetAt=now+1100;say(sim.lives%2,'Ups… era tua, não era?');sound('impact');}
     if(event.type==='gameover')showResult(false);
     if(event.type==='unstuck')toast('Desencalhada — sem perder bola.');
@@ -88,7 +104,7 @@ async function start(){
    }accumulator-=STEP;
   }}
   if(resetAt&&now>resetAt&&!paused){if(sim.nextBall()){predictionDirty=true;updateHUD();}resetAt=0;}
-  if(sim.time>nextQuip&&['ready','flying'].includes(sim.state)){const i=Math.floor(sim.time/6)%2;say(i,i===0?'Essa era a tua melhor?':'Eu fazia melhor… acho.');nextQuip=sim.time+10;}
+  if(sim.time>nextQuip&&sim.state==='ready'){const i=Math.floor(sim.time/6)%2;say(i,i===0?'Essa era a tua melhor?':'Eu fazia melhor… acho.');nextQuip=sim.time+10;}
   for(let i=0;i<2;i++){const el=$('#speech-'+i);if(sim.time>=speechUntil[i])el.hidden=true;else{const p=graphics.characterScreen(i);el.style.left=`${p.x}px`;el.style.top=`${p.y}px`;}}
   if(sim.state==='ready'&&showPath&&(predictionDirty||Math.abs(sim.angle-predictionAngle)>.005)&&now-predictionAt>130){graphics.setTrajectory(sim.predict(power,aim));predictionDirty=false;predictionAt=now;predictionAngle=sim.angle;}
   graphics.showPath=showPath;graphics.sync();graphics.render();if(now-lastHUD>100){updateHUD();lastHUD=now;}

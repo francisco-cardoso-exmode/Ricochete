@@ -19,10 +19,10 @@ export class Simulation {
   this.ball=this.world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(SPAWN.x,SPAWN.y,SPAWN.z).setCcdEnabled(true).setLinearDamping(.04).setAngularDamping(.05).setCanSleep(false));
   this.ball.userData={kind:'ball'};
   this.ballCollider=this.world.createCollider(RAPIER.ColliderDesc.ball(BALL_RADIUS).setDensity(3).setRestitution(.43).setFriction(.16).setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS),this.ball);
-  this.time=0;this.lives=5;this.saves=0;this.stillTime=0;this.characters=CHARACTERS.map((info,index)=>{
+  this.time=0;this.lives=5;this.saves=0;this.rally=0;this.stillTime=0;this.characters=CHARACTERS.map((info,index)=>{
    const p=characterPose(index,0);const body=this.world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(p.x,p.y,p.z));
    body.userData={kind:'character',index};const collider=this.world.createCollider(RAPIER.ColliderDesc.ball(CHARACTER_RADIUS).setSensor(true).setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS),body);
-   return {info,index,body,collider,strikeAge:Infinity,cooldown:0,connected:false};
+   return {info,index,body,collider,strikeAge:Infinity,cooldown:0,connected:false,manualX:null};
   });
   this.resetBall();this.pending=[];
  }
@@ -71,11 +71,20 @@ export class Simulation {
   if(immediate){this.angle=this.targetAngle;this.upper.setRotation(quat(foldRotation(this.angle)),true);this.upper.setNextKinematicRotation(quat(foldRotation(this.angle)));this.buildHinge();}
  }
  resetBall(){
-  this.ball.setTranslation(SPAWN,true);this.ball.setLinvel({x:0,y:0,z:0},true);this.ball.setAngvel({x:0,y:0,z:0},true);this.ball.resetForces(true);this.ball.resetTorques(true);this.ball.setGravityScale(0,true);this.ball.setBodyType(RAPIER.RigidBodyType.KinematicPositionBased,true);this.ball.setNextKinematicTranslation(SPAWN);this.state='ready';this.shotTime=0;this.inUpper=false;this.stillTime=0;this.bonusSeen.clear();
+  this.ball.setTranslation(SPAWN,true);this.ball.setLinvel({x:0,y:0,z:0},true);this.ball.setAngvel({x:0,y:0,z:0},true);this.ball.resetForces(true);this.ball.resetTorques(true);this.ball.setGravityScale(0,true);this.ball.setBodyType(RAPIER.RigidBodyType.KinematicPositionBased,true);this.ball.setNextKinematicTranslation(SPAWN);this.state='ready';this.shotTime=0;this.inUpper=false;this.stillTime=0;this.rally=0;this.bonusSeen.clear();
  }
  launch(power=72,aim=0){
   if(this.state!=='ready'||this.lives<=0)return false;
   this.ball.setBodyType(RAPIER.RigidBodyType.Dynamic,true);this.ball.setGravityScale(1,true);this.ball.setLinvel(launchVelocity(power,aim),true);this.ball.setAngvel({x:-9,y:0,z:0},true);this.state='flying';this.shotTime=0;this.shots++;return true;
+ }
+ moveCharacter(index,x){
+  const c=this.characters[index];if(!c||!Number.isFinite(x))return;
+  c.manualX=index===0?Math.max(-4.25,Math.min(-.75,x)):Math.max(.75,Math.min(4.25,x));
+ }
+ characterPosition(c,time,strikeAge=c.strikeAge,dt=STEP){
+  const p=characterPose(c.index,time,strikeAge);
+  if(c.manualX!==null){const x=c.body.translation().x;p.x=x+Math.max(-dt*9,Math.min(dt*9,c.manualX-x));}
+  return p;
  }
  headbutt(index){
   const c=this.characters[index];if(!c||this.state!=='flying'||c.cooldown>0)return false;
@@ -87,7 +96,7 @@ export class Simulation {
   const returning=this.state==='flying'&&this.ball.linvel().z>-.25;
   for(const c of this.characters){
    c.cooldown=Math.max(0,c.cooldown-STEP);c.strikeAge+=STEP;
-   const p=characterPose(c.index,this.time,c.strikeAge);c.body.setNextKinematicTranslation(p);
+   const p=this.characterPosition(c,this.time);c.body.setNextKinematicTranslation(p);
    c.collider.setSensor(!(returning&&c.strikeAge<STRIKE_DURATION*.68&&!c.connected));
   }
  }
@@ -99,7 +108,7 @@ export class Simulation {
   // The ability adds an impulse only AFTER real sphere-to-sphere contact.
   const wanted={x:offset*2.5,y:.85,z:-speed},m=this.ball.mass();
   this.ball.applyImpulse({x:(wanted.x-v.x)*m,y:(wanted.y-v.y)*m,z:(wanted.z-v.z)*m},true);
-  this.saves++;this.score+=25;this.pending.push({type:'save',character:c.index});
+  this.saves++;this.rally++;const points=25*Math.min(this.rally,4);this.score+=points;this.pending.push({type:'save',character:c.index,points,rally:this.rally});
  }
  step(){
   this.pending=[];
@@ -153,7 +162,7 @@ export class Simulation {
   prediction.timestep=STEP;
   const ball=prediction.getRigidBody(this.ball.handle);ball.setBodyType(RAPIER.RigidBodyType.Dynamic,true);ball.setGravityScale(1,true);ball.setLinvel(launchVelocity(power,aim),true);ball.setAngvel({x:-9,y:0,z:0},true);
   const points=[];
-  for(let i=0;i<duration/STEP;i++){applyReturnDraft(ball);for(const c of this.characters){prediction.getRigidBody(c.body.handle).setNextKinematicTranslation(characterPose(c.index,this.time+(i+1)*STEP));}prediction.step();if(i%4===0)points.push({...ball.translation()});}
+  for(let i=0;i<duration/STEP;i++){applyReturnDraft(ball);for(const c of this.characters){prediction.getRigidBody(c.body.handle).setNextKinematicTranslation(this.characterPosition(c,this.time+(i+1)*STEP,c.strikeAge+(i+1)*STEP,(i+1)*STEP));}prediction.step();if(i%4===0)points.push({...ball.translation()});}
   prediction.free();return points;
  }
  dispose(){this.events.free();this.world.free();}

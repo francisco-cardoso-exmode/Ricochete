@@ -51,3 +51,9 @@ Para testes de interface reproduzíveis, iniciar `npm run dev`, depois `npx play
 A bola de jogo mantém o mesmo rigid body durante lançamentos e reposições. As duas personagens são corpos cinemáticos separados, não duplicações da bola. Duas câmaras renderizam a mesma cena com planos de corte complementares. A previsão usa uma cópia temporária do mundo, nunca inserida no mundo em execução. A dobradiça roda meshes e colisores, com uma rampa física segmentada entre 90° e 180°.
 
 Requer WebGL 2 e WebAssembly. Validado no browser integrado e viewport móvel 390×844; ainda não validado num iPhone físico/Safari. Esta versão inclui um nível e não guarda partidas entre sessões.
+
+## Contrôle mobile et passage / atualização
+
+Arrasta o Bico ou a Bola (ou o respetivo botão) para os lados. Solta para dar a cabeçada; também podes posicioná-los antes do lançamento. Defesas seguidas dão 25, 50, 75 e até 100 pontos; o recorde fica guardado neste navegador.
+
+A passagem desenha a mesma malha da bola à frente da linha divisória, com o ponto médio alinhado à dobradiça. O corpo físico não é duplicado nem teleportado. Os gestos de zoom e deslocação da página estão bloqueados no modo de jogo.

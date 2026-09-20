@@ -18,3 +18,10 @@ body.player .crew-controls small{display:none}
 body.player .crew-controls button,body.player .crew-controls button:last-child{background:#343a40bb;border-color:#b9c0c755}
 body.player .crew-dot{background:#d3d6d9;box-shadow:none}
 body.player .crew-controls button:last-child .crew-dot{background:#858b94}
+
+/* Game gestures stay inside the playfield, including iOS overscroll. */
+html:has(body.player),body.player{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;touch-action:none}
+body.player{position:fixed;inset:0;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body.player button{touch-action:none}
+body.player #help-dialog{touch-action:pan-y;overscroll-behavior:contain}
+body.player #seam{visibility:hidden}

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { foldScreenY } from './screen-transfer.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { LEVEL, SPAWN, BALL_RADIUS, foldRotation, hingeSegments, transformUpper } from './level.js';
@@ -39,6 +40,14 @@ export class Graphics {
   this.aimTip=new THREE.Mesh(new THREE.ConeGeometry(.12,.3,12),aimMaterial);
   this.path.add(this.aimStem,this.aimTip);
   this.trail=new THREE.Line(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0xf1ffce,transparent:true,opacity:.65}));this.scene.add(this.trail);this.history=[];
+  // Presentation layer: the SAME mesh crosses above the divider, never a second ball.
+  this.bridgeScene=new THREE.Scene();this.bridgeScene.environment=this.env.texture;
+  this.bridgeScene.environmentIntensity=.65;
+  this.bridgeScene.add(new THREE.AmbientLight(0xffffff,1.5));
+  const bridgeLight=new THREE.DirectionalLight(0xffffff,2);bridgeLight.position.set(-100,200,100);this.bridgeScene.add(bridgeLight);
+  this.bridgeCamera=new THREE.OrthographicCamera(0,1,1,0,.1,100);this.bridgeCamera.position.z=50;
+  this.divider=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({color:0x343b40}));this.divider.position.z=-2;this.bridgeScene.add(this.divider);
+  this.flightShadow=new THREE.Mesh(new THREE.CircleGeometry(1,32),new THREE.MeshBasicMaterial({color:0x11151a,transparent:true,opacity:.25,depthWrite:false}));this.flightShadow.position.z=-1;this.bridgeScene.add(this.flightShadow);
   this.pulses=[];this.overview=false;this.lastAngle=-1;this.resize();this.sync();
  }
  piece(item){
@@ -198,11 +207,34 @@ export class Graphics {
  render(){
   const r=this.renderer,w=this.width,h=this.height;r.setScissorTest(true);
   if(this.overview){r.clippingPlanes=[];r.setViewport(0,0,w,h);r.setScissor(0,0,w,h);r.render(this.scene,this.overviewCamera);return;}
-  // Both draws use exactly the same Scene and the same physical ball mesh.
-  const bend=(180-this.sim.angle)*Math.PI/180;const normal=new THREE.Vector3(0,Math.sin(bend/2),-Math.cos(bend/2));r.clippingPlanes=[new THREE.Plane(normal,0)];
+  // Complementary world views, plus one continuous foreground hand-off.
+  const bend=(180-this.sim.angle)*Math.PI/180,normal=new THREE.Vector3(0,Math.sin(bend/2),-Math.cos(bend/2));
+  const worldPosition=this.ball.position.clone(),distance=normal.dot(worldPosition),band=2.1;
+  const crossing=this.sim.state==='flying'&&Math.abs(distance)<band&&worldPosition.y>-1;
+  const visible=this.ball.visible;this.ball.visible=visible&&!crossing;
+  r.clippingPlanes=[new THREE.Plane(normal,0)];
   r.setViewport(0,h/2,w,h/2);r.setScissor(0,h/2,w,h/2);r.render(this.scene,this.topCamera);
   r.clippingPlanes=[new THREE.Plane(normal.clone().negate(),0)];
   r.setViewport(0,0,w,h/2);r.setScissor(0,0,w,h/2);r.render(this.scene,this.bottomCamera);
+  r.clippingPlanes=[];r.setViewport(0,0,w,h);r.setScissor(0,0,w,h);
+  this.bridgeCamera.right=w;this.bridgeCamera.top=h;this.bridgeCamera.updateProjectionMatrix();
+  this.divider.scale.set(w,5,1);this.divider.position.set(w/2,h/2,-2);
+  this.flightShadow.visible=crossing;
+  if(crossing){
+   const t=(distance+band)/(band*2),blend=t*t*(3-2*t),lift=Math.sin(Math.PI*t);
+   const lower=worldPosition.clone().project(this.bottomCamera),upper=worldPosition.clone().project(this.topCamera);
+   const x=THREE.MathUtils.lerp((lower.x+1)*w/2,(upper.x+1)*w/2,blend);
+   const groundY=foldScreenY((lower.y+1)*h/4,h/2+(upper.y+1)*h/4,h,t);
+   const radiusFor=c=>{const p=worldPosition.clone().applyMatrix4(c.matrixWorldInverse);return BALL_RADIUS*(h/4)/(Math.tan(THREE.MathUtils.degToRad(c.fov/2))*Math.max(.1,-p.z));};
+   const radius=THREE.MathUtils.lerp(radiusFor(this.bottomCamera),radiusFor(this.topCamera),blend)*(1+.22*lift);
+   this.bridgeScene.add(this.ball);this.ball.visible=true;this.ball.position.set(x,groundY,0);this.ball.scale.setScalar(radius/BALL_RADIUS);
+   this.flightShadow.position.set(x,groundY-5,-1);this.flightShadow.scale.set(radius*1.2,radius*.36,1);this.flightShadow.material.opacity=.2*lift;
+  }
+  // Clear only depth: the ball and its shadow pass in front of the divider.
+  r.autoClear=false;r.clearDepth();r.render(this.bridgeScene,this.bridgeCamera);r.autoClear=true;
+  if(crossing){this.scene.add(this.ball);this.ball.position.copy(worldPosition);this.ball.scale.setScalar(1);}
+  this.ball.visible=visible;
+
  }
- dispose(){this.renderer.dispose();this.env.dispose();this.scene.traverse(o=>{if(o.geometry&&!Array.from(geometries.values()).includes(o.geometry))o.geometry.dispose();});}
+ dispose(){this.renderer.dispose();this.env.dispose();this.divider.geometry.dispose();this.divider.material.dispose();this.flightShadow.geometry.dispose();this.flightShadow.material.dispose();this.scene.traverse(o=>{if(o.geometry&&!Array.from(geometries.values()).includes(o.geometry))o.geometry.dispose();});}
 }
