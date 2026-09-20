@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { foldScreenY } from './screen-transfer.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { LEVEL, SPAWN, BALL_RADIUS, foldRotation, hingeSegments, transformUpper } from './level.js';
@@ -22,7 +21,7 @@ export class Graphics {
   this.renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});
   this.renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   this.renderer.toneMapping=THREE.ACESFilmicToneMapping;this.renderer.toneMappingExposure=.94;
-  this.scene=new THREE.Scene();this.scene.background=new THREE.Color(0x565b60);
+  this.scene=new THREE.Scene();this.scene.background=new THREE.Color(0x191d22);
   const environment=new RoomEnvironment();const pmrem=new THREE.PMREMGenerator(this.renderer);this.env=pmrem.fromScene(environment,.04);this.scene.environment=this.env.texture;this.scene.environmentIntensity=.65;environment.dispose();pmrem.dispose();
   this.scene.add(new THREE.HemisphereLight(0xffffff,0x242629,.65));
   const light=new THREE.DirectionalLight(0xffffff,2.05);light.position.set(-10,18,20);light.castShadow=true;light.shadow.mapSize.set(2048,2048);light.shadow.camera.left=-17;light.shadow.camera.right=17;light.shadow.camera.top=19;light.shadow.camera.bottom=-17;light.shadow.camera.far=60;light.shadow.bias=-.00015;light.shadow.normalBias=.025;light.shadow.radius=3;this.scene.add(light);this.scene.add(light.target);
@@ -40,15 +39,7 @@ export class Graphics {
   this.aimTip=new THREE.Mesh(new THREE.ConeGeometry(.12,.3,12),aimMaterial);
   this.path.add(this.aimStem,this.aimTip);
   this.trail=new THREE.Line(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0xf1ffce,transparent:true,opacity:.65}));this.scene.add(this.trail);this.history=[];
-  // Presentation layer: the SAME mesh crosses above the divider, never a second ball.
-  this.bridgeScene=new THREE.Scene();this.bridgeScene.environment=this.env.texture;
-  this.bridgeScene.environmentIntensity=.65;
-  this.bridgeScene.add(new THREE.AmbientLight(0xffffff,1.5));
-  const bridgeLight=new THREE.DirectionalLight(0xffffff,2);bridgeLight.position.set(-100,200,100);this.bridgeScene.add(bridgeLight);
-  this.bridgeCamera=new THREE.OrthographicCamera(0,1,1,0,.1,100);this.bridgeCamera.position.z=50;
-  this.divider=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({color:0x343b40}));this.divider.position.z=-2;this.bridgeScene.add(this.divider);
-  this.flightShadow=new THREE.Mesh(new THREE.CircleGeometry(1,32),new THREE.MeshBasicMaterial({color:0x11151a,transparent:true,opacity:.25,depthWrite:false}));this.flightShadow.position.z=-1;this.bridgeScene.add(this.flightShadow);
-  this.pulses=[];this.overview=false;this.lastAngle=-1;this.resize();this.sync();
+  this.pulses=[];this.overview=true;this.lastAngle=-1;this.resize();this.sync();
  }
  piece(item){
   const g=new THREE.Group(),{shape,size,color,pos}=item,mat=material(color);
@@ -113,7 +104,7 @@ export class Graphics {
   at(this.upper,box(10.7,.14,.16,0x272d32),[0,11.54,2.48]);
   for(const x of [-5.25,5.25]){const hinge=cylinder(.38,.75,material(0x3d4448));hinge.rotation.z=Math.PI/2;at(this.scene,hinge,[x,0,0]);const inner=cylinder(.27,.78,material(0xa4adb1));inner.rotation.z=Math.PI/2;at(this.scene,inner,[x,0,0]);}
   // Studio ground receives shadows from both physical halves.
-  const floor=mesh(new THREE.PlaneGeometry(120,120),new THREE.MeshStandardMaterial({color:0x464c52,roughness:1}),false);floor.rotation.x=-Math.PI/2;floor.position.y=-1;floor.receiveShadow=true;floor.castShadow=false;this.scene.add(floor);
+  const floor=mesh(new THREE.PlaneGeometry(120,120),new THREE.MeshStandardMaterial({color:0x25292f,roughness:1}),false);floor.rotation.x=-Math.PI/2;floor.position.y=-1;floor.receiveShadow=true;floor.castShadow=false;this.scene.add(floor);
  }
  makeLauncher(){
   this.launcher=new THREE.Group();this.launcher.position.set(SPAWN.x,0,SPAWN.z);this.base.add(this.launcher);
@@ -169,7 +160,18 @@ export class Graphics {
   // rather than an oblique view of a small board surrounded by empty space.
   this.bottomCamera.position.set(1.1,distance+.5,10.0);
   this.bottomCamera.up.set(0,0,-1);this.bottomCamera.lookAt(0,0,7.1);
-  const od=Math.max(31,20/this.overviewCamera.aspect);this.overviewCamera.position.set(od*.42,od*.65,od*.87);this.overviewCamera.lookAt(0,3.5,this.sim.angle>145?-1:3);
+  // One camera sees the actual folded board. Fit its corners, not a screen-space ball.
+  const corners=[];
+  for(const x of [-5.35,5.35])for(const z of [-.5,12.1])for(const y of [-.7,1.6])corners.push(new THREE.Vector3(x,y,z));
+  for(const x of [-5.35,5.35])for(const y of [0,11.65])for(const z of [-.7,2.6]){const p=transformUpper({x,y,z},a);corners.push(new THREE.Vector3(p.x,p.y,p.z));}
+  const bounds=new THREE.Box3().setFromPoints(corners),center=bounds.getCenter(new THREE.Vector3());
+  const direction=new THREE.Vector3(.10,.65,.76).normalize();
+  this.overviewCamera.position.copy(center).addScaledVector(direction,50);this.overviewCamera.lookAt(center);this.overviewCamera.updateMatrixWorld(true);
+  const right=new THREE.Vector3().setFromMatrixColumn(this.overviewCamera.matrixWorld,0),vertical=new THREE.Vector3().setFromMatrixColumn(this.overviewCamera.matrixWorld,1);
+  const tan=Math.tan(THREE.MathUtils.degToRad(this.overviewCamera.fov/2));let distanceToBoard=0;
+  for(const corner of corners){const d=corner.clone().sub(center),depth=d.dot(direction);distanceToBoard=Math.max(distanceToBoard,depth+Math.abs(d.dot(right))/(tan*this.overviewCamera.aspect)*1.045,depth+Math.abs(d.dot(vertical))/tan*1.10);}
+  this.overviewCamera.position.copy(center).addScaledVector(direction,distanceToBoard);this.overviewCamera.lookAt(center);
+
   for(const c of [this.topCamera,this.bottomCamera,this.overviewCamera])c.updateProjectionMatrix();
  }
  setTrajectory(points){
@@ -207,34 +209,11 @@ export class Graphics {
  render(){
   const r=this.renderer,w=this.width,h=this.height;r.setScissorTest(true);
   if(this.overview){r.clippingPlanes=[];r.setViewport(0,0,w,h);r.setScissor(0,0,w,h);r.render(this.scene,this.overviewCamera);return;}
-  // Complementary world views, plus one continuous foreground hand-off.
+  // Lab comparison only: two unmodified views of the same physical world.
   const bend=(180-this.sim.angle)*Math.PI/180,normal=new THREE.Vector3(0,Math.sin(bend/2),-Math.cos(bend/2));
-  const worldPosition=this.ball.position.clone(),distance=normal.dot(worldPosition),band=2.1;
-  const crossing=this.sim.state==='flying'&&Math.abs(distance)<band&&worldPosition.y>-1;
-  const visible=this.ball.visible;this.ball.visible=visible&&!crossing;
-  r.clippingPlanes=[new THREE.Plane(normal,0)];
-  r.setViewport(0,h/2,w,h/2);r.setScissor(0,h/2,w,h/2);r.render(this.scene,this.topCamera);
-  r.clippingPlanes=[new THREE.Plane(normal.clone().negate(),0)];
-  r.setViewport(0,0,w,h/2);r.setScissor(0,0,w,h/2);r.render(this.scene,this.bottomCamera);
-  r.clippingPlanes=[];r.setViewport(0,0,w,h);r.setScissor(0,0,w,h);
-  this.bridgeCamera.right=w;this.bridgeCamera.top=h;this.bridgeCamera.updateProjectionMatrix();
-  this.divider.scale.set(w,5,1);this.divider.position.set(w/2,h/2,-2);
-  this.flightShadow.visible=crossing;
-  if(crossing){
-   const t=(distance+band)/(band*2),blend=t*t*(3-2*t),lift=Math.sin(Math.PI*t);
-   const lower=worldPosition.clone().project(this.bottomCamera),upper=worldPosition.clone().project(this.topCamera);
-   const x=THREE.MathUtils.lerp((lower.x+1)*w/2,(upper.x+1)*w/2,blend);
-   const groundY=foldScreenY((lower.y+1)*h/4,h/2+(upper.y+1)*h/4,h,t);
-   const radiusFor=c=>{const p=worldPosition.clone().applyMatrix4(c.matrixWorldInverse);return BALL_RADIUS*(h/4)/(Math.tan(THREE.MathUtils.degToRad(c.fov/2))*Math.max(.1,-p.z));};
-   const radius=THREE.MathUtils.lerp(radiusFor(this.bottomCamera),radiusFor(this.topCamera),blend)*(1+.22*lift);
-   this.bridgeScene.add(this.ball);this.ball.visible=true;this.ball.position.set(x,groundY,0);this.ball.scale.setScalar(radius/BALL_RADIUS);
-   this.flightShadow.position.set(x,groundY-5,-1);this.flightShadow.scale.set(radius*1.2,radius*.36,1);this.flightShadow.material.opacity=.2*lift;
-  }
-  // Clear only depth: the ball and its shadow pass in front of the divider.
-  r.autoClear=false;r.clearDepth();r.render(this.bridgeScene,this.bridgeCamera);r.autoClear=true;
-  if(crossing){this.scene.add(this.ball);this.ball.position.copy(worldPosition);this.ball.scale.setScalar(1);}
-  this.ball.visible=visible;
-
+  r.clippingPlanes=[new THREE.Plane(normal,0)];r.setViewport(0,h/2,w,h/2);r.setScissor(0,h/2,w,h/2);r.render(this.scene,this.topCamera);
+  r.clippingPlanes=[new THREE.Plane(normal.clone().negate(),0)];r.setViewport(0,0,w,h/2);r.setScissor(0,0,w,h/2);r.render(this.scene,this.bottomCamera);
  }
- dispose(){this.renderer.dispose();this.env.dispose();this.divider.geometry.dispose();this.divider.material.dispose();this.flightShadow.geometry.dispose();this.flightShadow.material.dispose();this.scene.traverse(o=>{if(o.geometry&&!Array.from(geometries.values()).includes(o.geometry))o.geometry.dispose();});}
+
+ dispose(){this.renderer.dispose();this.env.dispose();this.scene.traverse(o=>{if(o.geometry&&!Array.from(geometries.values()).includes(o.geometry))o.geometry.dispose();});}
 }

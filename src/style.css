@@ -25,3 +25,5 @@ body.player{position:fixed;inset:0;-webkit-user-select:none;user-select:none;-we
 body.player button{touch-action:none}
 body.player #help-dialog{touch-action:pan-y;overscroll-behavior:contain}
 body.player #seam{visibility:hidden}
+
+body.player .play-instruction{top:auto;bottom:60px;left:50%;transform:translateX(-50%);max-width:85%;width:max-content;text-align:center;background:#20252ad9}

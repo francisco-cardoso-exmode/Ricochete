@@ -52,8 +52,8 @@ A bola de jogo mantém o mesmo rigid body durante lançamentos e reposições. A
 
 Requer WebGL 2 e WebAssembly. Validado no browser integrado e viewport móvel 390×844; ainda não validado num iPhone físico/Safari. Esta versão inclui um nível e não guarda partidas entre sessões.
 
-## Contrôle mobile et passage / atualização
+## Controlos móveis e vista contínua
 
 Arrasta o Bico ou a Bola (ou o respetivo botão) para os lados. Solta para dar a cabeçada; também podes posicioná-los antes do lançamento. Defesas seguidas dão 25, 50, 75 e até 100 pontos; o recorde fica guardado neste navegador.
 
-A passagem desenha a mesma malha da bola à frente da linha divisória, com o ponto médio alinhado à dobradiça. O corpo físico não é duplicado nem teleportado. Os gestos de zoom e deslocação da página estão bloqueados no modo de jogo.
+O jogo usa uma câmara para mostrar o tabuleiro dobrado inteiro. A bola é desenhada na posição física real, sem interpolação entre ecrãs nem alteração artificial de escala. A comparação com duas câmaras fica apenas no laboratório. Os gestos de zoom e deslocação da página estão bloqueados no modo de jogo.
