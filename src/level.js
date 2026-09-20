@@ -1,4 +1,5 @@
 // Coordinates: base X/Z, +Y up. Upper kit local X/Y with +Z cavity depth.
+export const UPPER_DEPTH = 5.8;
 export const BALL_RADIUS = 0.31;
 export const SPAWN = { x: 0, y: 0.39, z: 10.35 };
 export const STEP = 1 / 120;
@@ -17,9 +18,9 @@ b('base',5.15,.65,6.2,.35,1.7,13.1,{color:0x848e84,shell:true});
 // Continuous external apron sits below the open playfield edge.
 b('base',0,-.56,12.7,10.6,.38,.42,{color:0x484b50,shell:true});
 b('upper',0,5.55,-.34,10.6,11.8,.65,{color:0x62666c,shell:true});
-b('upper',-5.15,5.5,1.52,.35,11.7,3.6,{color:0x90998c,shell:true});
-b('upper',5.15,5.5,1.52,.35,11.7,3.6,{color:0x90998c,shell:true});
-b('upper',0,11.3,1.52,10.6,.35,3.6,{color:0x747f70,shell:true});
+b('upper',-5.15,5.5,2.62,.35,11.7,5.8,{color:0x90998c,shell:true});
+b('upper',5.15,5.5,2.62,.35,11.7,5.8,{color:0x90998c,shell:true});
+b('upper',0,11.3,2.62,10.6,.35,5.8,{color:0x747f70,shell:true});
 // Base: low rails guide returning balls; isolated blocks create readable rebounds.
 // Keep the launch corridor open, with obstacles grounded rather than tall tunnels.
 for(const side of [-1,1]){
@@ -80,6 +81,12 @@ add('upper','bell',[-2.7,4.8,2.0],[.37,.5],{suspended:true,anchor:[-2.7,6.05,2.0
 add('upper','bell',[3.25,6.15,2.0],[.37,.5],{suspended:true,anchor:[3.25,7.55,2.0],bonus:'bell',color:0xbac0c1});
 add('upper','box',[-3.6,8.65,1.8],[.65,.65,.65],{suspended:true,anchor:[-3.6,10.6,1.8],crate:true,color:0xafbaa0});
 for(const side of [-1,1])add('upper','bumper',[side*2.8,7.4,1.35],[.55,.4],{rotation:[Math.PI/2,0,0],bonus:'bumper',lessonTwo:true,color:0xbfc1c4});
+// Facing angled plates form real front/back ricochet lanes inside the upper cavity.
+for(const side of [-1,1]){
+ b('upper',side*3.3,5.5,3.65,1.65,2.1,.24,{rotation:[.16,side*.42,0],rebound:true,depthKit:true,color:0xc2c2c2});
+ b('upper',side*3.65,7.8,.8,1.5,1.8,.24,{rotation:[-.2,-side*.45,0],rebound:true,depthKit:true,color:0xa4a4a4});
+ b('upper',side*4.7,5.5,2.2,.3,.25,3.1,{depthKit:true,color:0x676767});
+}
 // A small optional destructible wall, with a shelf fixed to the back panel.
 for(const side of [-1,1])b('upper',side*3.8,2.72,.62,1.6,.25,1.45,{tutorialWall:true,color:0x727272});
 for(const side of [-1,1])for(let row=0;row<3;row++)b('upper',side*3.8,3.25+row*.84,.68,1.3,.78,1.15,{breakable:true,tutorialWall:true,color:0xb7aea0});
@@ -128,6 +135,7 @@ export function piecesForLesson(level=5){
  const lesson=LESSONS[level-1];
  return LEVEL.filter(p=>{
   if(p.shell)return true;
+  if(p.depthKit)return level>=2;
   if(p.lessonTwo)return level===2;
   if(p.tutorialWall)return level===2||level===3;
   if(p.target!==undefined)return p.target<lesson.targets;
@@ -140,7 +148,6 @@ export function piecesForLesson(level=5){
   }
   return false;
  }).map(p=>{
-  if(level===2&&p.shell&&p.side==='upper'&&p.size[2]===3.6)return {...p,pos:[p.pos[0],p.pos[1],2.02],size:[p.size[0],p.size[1],4.6]};
   if(level===2&&p.target===1)return {...p,pos:[1.65,6.1,.5],size:[1.05,.2]};
   if(level===4&&p.target!==undefined)return {...p,pos:[p.target===0?0:p.target===1?1.8:-1.8,4.2,.14]};
   if(level===4&&p.side==='upper'&&p.shape==='box'&&p.size[0]<.2&&p.pos[0]===1.45)return {...p,pos:[3.6,p.pos[1],p.pos[2]]};

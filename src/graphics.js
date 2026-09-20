@@ -119,10 +119,10 @@ export class Graphics {
    parent.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts),gridMat));
   };addGrid(this.base,false);addGrid(this.upper,true);
   for(const x of [-5.35,5.35]){
-   at(this.base,box(.13,.18,13.2,0x2c3134),[x,.8,6.2]);at(this.upper,box(.13,11.7,.18,0x2c3134),[x,5.5,this.sim.level===2?4.3:3.3]);
-   at(this.base,box(.055,.06,13.1,0xb6bec4),[x-.05,.91,6.2]);at(this.upper,box(.055,11.65,.06,0xb6bec4),[x-.05,5.5,this.sim.level===2?4.41:3.41]);
+   at(this.base,box(.13,.18,13.2,0x2c3134),[x,.8,6.2]);at(this.upper,box(.13,11.7,.18,0x2c3134),[x,5.5,5.5]);
+   at(this.base,box(.055,.06,13.1,0xb6bec4),[x-.05,.91,6.2]);at(this.upper,box(.055,11.65,.06,0xb6bec4),[x-.05,5.5,5.61]);
   }
-  at(this.upper,box(10.7,.14,.16,0x272d32),[0,11.54,this.sim.level===2?4.28:3.28]);
+  at(this.upper,box(10.7,.14,.16,0x272d32),[0,11.54,5.48]);
   for(const x of [-5.25,5.25]){const hinge=cylinder(.38,.75,material(0x3d4448));hinge.rotation.z=Math.PI/2;at(this.scene,hinge,[x,0,0]);const inner=cylinder(.27,.78,material(0xa4adb1));inner.rotation.z=Math.PI/2;at(this.scene,inner,[x,0,0]);}
   // Name plate on the outside of the lid, visible while the box is closed.
   const label=document.createElement('canvas');label.width=1024;label.height=256;
@@ -216,7 +216,7 @@ export class Graphics {
   // One camera sees the actual folded board. Fit its corners, not a screen-space ball.
   const corners=[];
   for(const x of [-5.35,5.35])for(const z of [-.5,12.95])for(const y of [-.7,1.6])corners.push(new THREE.Vector3(x,y,z));
-  for(const x of [-5.35,5.35])for(const y of [0,11.65])for(const z of [-.7,this.sim.level===2?4.4:3.4]){const p=transformUpper({x,y,z},a);corners.push(new THREE.Vector3(p.x,p.y,p.z));}
+  for(const x of [-5.35,5.35])for(const y of [0,11.65])for(const z of [-.7,5.6]){const p=transformUpper({x,y,z},a);corners.push(new THREE.Vector3(p.x,p.y,p.z));}
   const bounds=new THREE.Box3().setFromPoints(corners),center=bounds.getCenter(new THREE.Vector3());
   const direction=new THREE.Vector3(.10,.65,.76).normalize();
   this.overviewCamera.position.copy(center).addScaledVector(direction,50);this.overviewCamera.lookAt(center);this.overviewCamera.updateMatrixWorld(true);

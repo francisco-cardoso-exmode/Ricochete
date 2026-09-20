@@ -33,7 +33,7 @@ export class Simulation {
   }
   this.resetBall();this.pending=[];
  }
- attach(desc,body,item){const c=this.world.createCollider(desc.setFriction(.3).setRestitution(item.bonus==='bumper'?1.12:.34).setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS),body);this.colliders.set(c.handle,{...item,sensor:c.isSensor()});return c;}
+ attach(desc,body,item){const c=this.world.createCollider(desc.setFriction(.3).setRestitution(item.bonus==='bumper'?1.12:item.rebound?.88:.34).setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS),body);this.colliders.set(c.handle,{...item,sensor:c.isSensor()});return c;}
  createPiece(item){
   const {shape,pos,size,side}=item;let body=side==='upper'?this.upper:this.base;let p=vec(pos);let q=quat(...(item.rotation||[0,0,0]));
   if(item.defender!==undefined){
@@ -203,7 +203,7 @@ export class Simulation {
   if(this.state==='flying'){
    this.shotTime+=STEP;const p=this.ball.translation();const local=transformUpper(p,180-this.angle);
    // Inverse upper rotation; a threshold past the curved throat identifies the upper cavity.
-   const inUpper=local.y>2.7&&local.z<3.6&&local.z>-.6;
+   const inUpper=local.y>2.7&&local.z<5.8&&local.z>-.6;
    if(inUpper&&!this.inUpper){this.crossings++;this.pending.push({type:'crossing'});}this.inUpper=inUpper;
    if(this.lesson.home&&this.homeOpen&&Math.abs(p.x)<1.12&&p.z>11.35&&p.z<12.5&&p.y<.15){this.state='won';this.pending.push({type:'won'});}
    else if(!this.lesson.home&&this.targets.size===this.lesson.targets&&this.saves>=this.lesson.saves){this.state='won';this.pending.push({type:'won'});}

@@ -133,3 +133,10 @@ test('Missing the bell never opens the nest and an escaped hero spends exactly o
 test('The bellows cannot remotely move a hero in the upper box and has a cooldown',()=>{
  const s=new Simulation(90,1);try{s.launch();s.ball.setTranslation({x:1,y:5,z:1},true);assert.equal(s.assistHome(),true);assert.equal(s.assistHome(),false);advance(s,40);assert.equal(s.saves,0);}finally{s.dispose();}
 });
+
+test('A normal box-two launch ricochets between distinct front and rear plates',()=>{
+ const s=new Simulation(90,2);try{const handle=s.ball.handle,hits=[];s.launch(60,-6);
+ for(let i=0;i<1600&&s.state==='flying';i++)for(const e of s.step())if(e.type==='impact'&&e.item.rebound)hits.push({id:e.item.id,z:s.ball.translation().z});
+ assert.ok(new Set(hits.map(h=>h.id)).size>=2,'Hits separate physical plates');assert.ok(Math.max(...hits.map(h=>h.z))-Math.min(...hits.map(h=>h.z))>1.5,'Travels through cavity depth between contacts');assert.equal(s.ball.handle,handle);
+ }finally{s.dispose();}
+});
