@@ -19,7 +19,7 @@ function defend(index){if(sim.level<3)return;if(sim.headbutt(index)){say(index,i
 let bestScore=0;try{bestScore=Number(localStorage.getItem('ricochete-best'))||0;}catch{}
 function showResult(won){
  const newBest=sim.score>bestScore;bestScore=Math.max(bestScore,sim.score);try{localStorage.setItem('ricochete-best',String(bestScore));}catch{}
- $('#victory').hidden=false;$('#result-label').textContent=won?`CAIXA ${sim.level} / COMPLETA`:'FIM DA TENTATIVA';$('#again').textContent=won&&sim.level<5?'Abrir a próxima caixa ↗':'Jogar outra vez ↗';
+ $('#victory').hidden=false;$('#result-label').textContent=won?`CAIXA ${sim.level} / COMPLETA`:'FIM DA TENTATIVA';$('#again').textContent=won&&sim.level<5?'Abrir a próxima caixa':'Jogar outra vez';
  $('#result-title').textContent=won?(sim.level<5?'Caixa conquistada.':'Calaste as duas.'):'Quase. Mais uma?';
  $('#result-text').textContent=`${sim.score} pontos · ${sim.saves} defesas. ${newBest?'Novo recorde!':'Recorde: '+bestScore+'.'} ${won?sim.lesson.name+'.':'Tenta outra vez.'}`;
 }
@@ -67,7 +67,7 @@ function restart(){sim.dispose();graphics.dispose();sim=new Simulation(desiredAn
 function prepareBox(){
  clearTimeout(toastTimer);$('#toast').classList.remove('visible');
  openingPhase=lab?'playing':'closed';openingTime=0;graphics.setOpening(lab?1:0);
- $('#box-intro').hidden=lab;$('#open-box').disabled=false;$('#open-box').textContent=`Abrir caixa ${lessonIndex} ↗`;
+ $('#box-intro').hidden=lab;$('#open-box').disabled=false;$('#open-box').textContent=`Abrir caixa ${lessonIndex}`;
  $('#box-intro span').textContent=sim.lesson.name;document.body.classList.toggle('opening-box',!lab);document.body.classList.toggle('first-lessons',lessonIndex<3);
  document.title=`RICOCHETE · Caixa ${lessonIndex}`;
 }
@@ -88,7 +88,7 @@ async function start(){
   button.addEventListener('pointercancel',()=>{slide=null;});
  }
  for(const [id,index]of [['#bico',0],['#bola',1]])$(id).addEventListener('click',e=>{if(e.detail===0)defend(index);});$('#close-help').addEventListener('click',()=>$('#help-dialog').close());$('#help-dialog').addEventListener('close',()=>paused=false);
- $('#sound').addEventListener('click',()=>{audioOn=!audioOn;$('#sound span').textContent=audioOn?'ON':'OFF';$('#sound').setAttribute('aria-label',audioOn?'Desativar som':'Ativar som');sound('target');});
+ $('#sound').addEventListener('click',()=>{audioOn=!audioOn;$('#sound').classList.toggle('muted',!audioOn);$('#sound').title=audioOn?'Som ligado':'Som desligado';$('#sound span').textContent=audioOn?'ON':'OFF';$('#sound').setAttribute('aria-label',audioOn?'Desativar som':'Ativar som');sound('target');});
  let drag=null,crewDrag=null;const canvas=$('#game');
  canvas.addEventListener('pointerdown',e=>{if(!e.isPrimary||openingPhase!=='playing')return;e.preventDefault();const r=canvas.getBoundingClientRect();if(sim.level>=3&&['ready','flying'].includes(sim.state)){if(!overview&&e.clientY<r.top+r.height/2)return;const x=e.clientX-r.left,y=e.clientY-r.top;let best=-1,distance=Math.max(24,Math.min(36,r.width*.08));for(let i=0;i<2;i++){const p=graphics.characterScreen(i),d=Math.hypot(x-p.x,y-(p.y+12));if(d<distance){best=i;distance=d;}}if(best>=0){crewDrag={index:best,x:e.clientX,start:sim.characters[best].body.translation().x,id:e.pointerId};canvas.setPointerCapture(e.pointerId);return;}if(sim.state==='flying')return;}if(sim.state!=='ready'||(!overview&&e.clientY<r.top+r.height/2))return;drag={x:e.clientX,y:e.clientY,power,aim,id:e.pointerId};canvas.setPointerCapture(e.pointerId);});
  canvas.addEventListener('pointermove',e=>{if(crewDrag?.id===e.pointerId){sim.moveCharacter(crewDrag.index,crewDrag.start+(e.clientX-crewDrag.x)/canvas.getBoundingClientRect().width*10);return;}if(!drag||drag.id!==e.pointerId)return;const r=canvas.getBoundingClientRect();aim=Math.max(-28,Math.min(28,drag.aim+(e.clientX-drag.x)/r.width*65));power=Math.max(25,Math.min(100,drag.power+(e.clientY-drag.y)/r.height*120));predictionDirty=true;updateControls();});

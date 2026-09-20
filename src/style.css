@@ -33,3 +33,12 @@ body.player .play-instruction{top:auto;bottom:60px;left:50%;transform:translateX
 #box-intro span{font-size:11px;color:#c2c9ce}.opening-box .crew-controls,.opening-box .player-hud,.opening-box .play-instruction{visibility:hidden}
 
 .goals i[hidden]{display:none}body.first-lessons .crew-controls{display:none}
+
+/* Shared vector icons: no platform-dependent text glyphs. */
+.ui-icon{width:20px;height:20px;display:inline-block;flex-shrink:0;vertical-align:middle}
+.icon-button{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.sound-muted{display:none}.muted .sound-muted{display:block}.muted .sound-waves{display:none}
+body.player header .icon-button{width:36px;height:36px;padding:8px;border:1px solid #aab3bd22;border-radius:11px;background:#20262c80;backdrop-filter:blur(8px)}
+body.player #sound span{display:none}body.player header{gap:6px}
+#open-box{border-radius:14px;padding:15px 28px;letter-spacing:.1px;font-weight:600;border-color:#ffffff55;background:linear-gradient(#eef0f3,#cdd3da);box-shadow:0 4px 16px #0002,inset 0 1px #fff9}
+.text-button .ui-icon,.reset-button .ui-icon{width:17px;height:17px}.brand-mark .ui-icon{width:23px;height:23px}
