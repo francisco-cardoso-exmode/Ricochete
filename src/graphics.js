@@ -28,7 +28,7 @@ export class Graphics {
   const fill=new THREE.DirectionalLight(0xe5e9ef,.75);fill.position.set(10,10,-10);this.scene.add(fill);
   this.base=new THREE.Group();this.upper=new THREE.Group();this.hinge=new THREE.Group();this.scene.add(this.base,this.upper,this.hinge);this.upper.rotation.x=foldRotation(simulation.angle);
   this.pieces=new Map();this.dynamics=new Map();this.chains=[];this.bellRings=new Map();
-  for(const item of LEVEL){const obj=this.piece(item);obj.userData=item;this.pieces.set(item.id,obj);if(item.dynamic||item.suspended){this.scene.add(obj);this.dynamics.set(item.id,obj);}else(item.side==='upper'?this.upper:this.base).add(obj);}
+  for(const item of this.sim.levelPieces){const obj=this.piece(item);obj.userData=item;this.pieces.set(item.id,obj);if(item.dynamic||item.suspended){this.scene.add(obj);this.dynamics.set(item.id,obj);}else(item.side==='upper'?this.upper:this.base).add(obj);}
   this.addDetails();this.makeLauncher();this.makeHinge();this.makeCharacters();
   this.ball=mesh(new THREE.SphereGeometry(BALL_RADIUS,32,24),new THREE.MeshStandardMaterial({color:0xf2f4f6,emissive:0xb4bdc4,emissiveIntensity:.12,metalness:.85,roughness:.16}),false);this.scene.add(this.ball);
   const glow=torus(BALL_RADIUS*1.05,.012,new THREE.MeshBasicMaterial({color:0xecfbd2}));this.ball.add(glow);glow.rotation.x=.6;
@@ -39,7 +39,7 @@ export class Graphics {
   this.aimTip=new THREE.Mesh(new THREE.ConeGeometry(.12,.3,12),aimMaterial);
   this.path.add(this.aimStem,this.aimTip);
   this.trail=new THREE.Line(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0xf1ffce,transparent:true,opacity:.65}));this.scene.add(this.trail);this.history=[];
-  this.pulses=[];this.overview=true;this.lastAngle=-1;this.resize();this.sync();
+  this.opening=1;this.pulses=[];this.overview=true;this.lastAngle=-1;this.resize();this.sync();
  }
  piece(item){
   const g=new THREE.Group(),{shape,size,color,pos}=item,mat=material(color);
@@ -103,6 +103,11 @@ export class Graphics {
   }
   at(this.upper,box(10.7,.14,.16,0x272d32),[0,11.54,2.48]);
   for(const x of [-5.25,5.25]){const hinge=cylinder(.38,.75,material(0x3d4448));hinge.rotation.z=Math.PI/2;at(this.scene,hinge,[x,0,0]);const inner=cylinder(.27,.78,material(0xa4adb1));inner.rotation.z=Math.PI/2;at(this.scene,inner,[x,0,0]);}
+  // Name plate on the outside of the lid, visible while the box is closed.
+  const label=document.createElement('canvas');label.width=1024;label.height=256;
+  const ink=label.getContext('2d');ink.fillStyle='#bdc2c7';ink.textAlign='center';ink.font='bold 112px monospace';ink.fillText('RICOCHETE',512,136);ink.font='28px monospace';ink.fillText('F O L D   P L A Y G R O U N D',512,208);
+  const texture=new THREE.CanvasTexture(label);texture.colorSpace=THREE.SRGBColorSpace;
+  this.lidLabel=new THREE.Mesh(new THREE.PlaneGeometry(7.5,1.875),new THREE.MeshBasicMaterial({map:texture,transparent:true,depthWrite:false}));this.lidLabel.position.set(0,6,-.675);this.lidLabel.rotation.set(0,Math.PI,Math.PI);this.upper.add(this.lidLabel);
   // Studio ground receives shadows from both physical halves.
   const floor=mesh(new THREE.PlaneGeometry(120,120),new THREE.MeshStandardMaterial({color:0x25292f,roughness:1}),false);floor.rotation.x=-Math.PI/2;floor.position.y=-1;floor.receiveShadow=true;floor.castShadow=false;this.scene.add(floor);
  }
@@ -170,7 +175,9 @@ export class Graphics {
   const right=new THREE.Vector3().setFromMatrixColumn(this.overviewCamera.matrixWorld,0),vertical=new THREE.Vector3().setFromMatrixColumn(this.overviewCamera.matrixWorld,1);
   const tan=Math.tan(THREE.MathUtils.degToRad(this.overviewCamera.fov/2));let distanceToBoard=0;
   for(const corner of corners){const d=corner.clone().sub(center),depth=d.dot(direction);distanceToBoard=Math.max(distanceToBoard,depth+Math.abs(d.dot(right))/(tan*this.overviewCamera.aspect)*1.045,depth+Math.abs(d.dot(vertical))/tan*1.10);}
-  this.overviewCamera.position.copy(center).addScaledVector(direction,distanceToBoard);this.overviewCamera.lookAt(center);
+  center.addScaledVector(vertical,.75);
+  this.overviewCamera.position.copy(center).addScaledVector(direction,distanceToBoard*.91);this.overviewCamera.lookAt(center);
+  this.openCameraPosition=this.overviewCamera.position.clone();this.openCameraTarget=center.clone();
 
   for(const c of [this.topCamera,this.bottomCamera,this.overviewCamera])c.updateProjectionMatrix();
  }
@@ -195,7 +202,7 @@ export class Graphics {
   if(Math.abs(sim.angle-this.lastAngle)>.005){this.lastAngle=sim.angle;this.updateHinge();this.updateCameras();}
   for(const [id,obj]of this.dynamics){const d=sim.dynamic.get(id);obj.position.copy(d.body.translation());obj.quaternion.copy(d.body.rotation());}
   for(const [id,hit]of this.bellRings){const age=sim.time-hit.time,clapper=this.pieces.get(id)?.getObjectByName('clapper');if(clapper)clapper.rotation.z=Math.sin(age*25)*.5*hit.intensity*Math.exp(-age*1.5);if(age>4)this.bellRings.delete(id);}
-  for(const {item,links}of this.chains){const anchor=transformUpper(item.anchor,sim.angle),p=sim.dynamic.get(item.id).body.translation();links.forEach((link,i)=>{link.position.lerpVectors(new THREE.Vector3(anchor.x,anchor.y,anchor.z),new THREE.Vector3(p.x,p.y+.28,p.z),i/links.length);link.rotation.y=i%2*Math.PI/2;});}
+  for(const {item,links}of this.chains){const anchor=transformUpper(item.anchor,sim.angle),p=sim.dynamic.get(item.id).body.translation();links.forEach((link,i)=>{link.position.lerpVectors(new THREE.Vector3(anchor.x,anchor.y,anchor.z),new THREE.Vector3(p.x,p.y+.28,p.z),i/links.length);link.rotation.set(0,i%2*Math.PI/2,0);});}
   if(sim.state==='flying'){this.history.push(this.ball.position.clone());if(this.history.length>7)this.history.shift();}else this.history=[];
   this.trail.geometry.dispose();this.trail.geometry=new THREE.BufferGeometry().setFromPoints(this.history);
   this.path.visible=sim.state==='ready'&&this.showPath!==false;
@@ -206,7 +213,22 @@ export class Graphics {
   const obj=this.pieces.get(item.id);if(item.target!==undefined){obj.traverse(o=>{if(o.isMesh){o.material=o.material.clone();o.material.emissive=new THREE.Color(0x8fbd42);o.material.emissiveIntensity=.2;}});}
   const pulse=torus(.45,.025,new THREE.MeshBasicMaterial({color:0xe6ffb2,transparent:true,opacity:1}));pulse.position.copy(this.ball.position);this.scene.add(pulse);this.pulses.push(pulse);
  }
+ setOpening(progress){this.opening=Math.max(0,Math.min(1,progress));}
+ animateOpening(){
+  const eased=this.opening*this.opening*(3-2*this.opening);
+  if(this.openCameraPosition){this.overviewCamera.position.copy(this.openCameraPosition);this.overviewCamera.position.y-=3.5*(1-eased);const target=this.openCameraTarget.clone();target.y-=3.5*(1-eased);this.overviewCamera.lookAt(target);}
+  if(this.opening>=1){this.upper.position.y=0;return;}
+  const rotation=(1-eased)*Math.PI/2,lift=(1-eased)*3.2;
+  this.upper.rotation.x=rotation;this.upper.position.y=lift;
+  const q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),rotation);
+  for(const [id,obj]of this.dynamics){if(this.sim.dynamic.get(id).item.side!=='upper')continue;obj.position.applyQuaternion(q);obj.position.y+=lift;obj.quaternion.premultiply(q);}
+  for(const {links}of this.chains)for(const link of links){link.position.applyQuaternion(q);link.position.y+=lift;link.quaternion.premultiply(q);}
+  this.ball.visible=false;this.path.visible=false;this.launcher.visible=false;
+  for(const c of this.crew){c.group.visible=false;c.halo.visible=false;}
+ }
  render(){
+  this.animateOpening();
+  if(this.opening>=1)for(const c of this.crew){c.group.visible=this.sim.level>=3;c.halo.visible=this.sim.level>=3;}
   const r=this.renderer,w=this.width,h=this.height;r.setScissorTest(true);
   if(this.overview){r.clippingPlanes=[];r.setViewport(0,0,w,h);r.setScissor(0,0,w,h);r.render(this.scene,this.overviewCamera);return;}
   // Lab comparison only: two unmodified views of the same physical world.
@@ -215,5 +237,5 @@ export class Graphics {
   r.clippingPlanes=[new THREE.Plane(normal.clone().negate(),0)];r.setViewport(0,0,w,h/2);r.setScissor(0,0,w,h/2);r.render(this.scene,this.bottomCamera);
  }
 
- dispose(){this.renderer.dispose();this.env.dispose();this.scene.traverse(o=>{if(o.geometry&&!Array.from(geometries.values()).includes(o.geometry))o.geometry.dispose();});}
+ dispose(){this.renderer.dispose();this.env.dispose();this.lidLabel.material.map.dispose();this.scene.traverse(o=>{if(o.geometry&&!Array.from(geometries.values()).includes(o.geometry))o.geometry.dispose();});}
 }

@@ -57,3 +57,15 @@ Requer WebGL 2 e WebAssembly. Validado no browser integrado e viewport móvel 39
 Arrasta o Bico ou a Bola (ou o respetivo botão) para os lados. Solta para dar a cabeçada; também podes posicioná-los antes do lançamento. Defesas seguidas dão 25, 50, 75 e até 100 pontos; o recorde fica guardado neste navegador.
 
 O jogo usa uma câmara para mostrar o tabuleiro dobrado inteiro. A bola é desenhada na posição física real, sem interpolação entre ecrãs nem alteração artificial de escala. A comparação com duas câmaras fica apenas no laboratório. Os gestos de zoom e deslocação da página estão bloqueados no modo de jogo.
+
+## Caixas de aprendizagem
+
+O modo de jogo começa com a caixa fechada. Toca em Abrir caixa: a tampa abre durante 2,2 segundos, com a simulação parada até a abertura terminar. A câmara está mais próxima do tabuleiro.
+
+1. O primeiro lançamento: um alvo, espaço livre para aprender.
+2. Escolhe o ângulo: dois alvos e bumpers.
+3. Devolve a bola: um alvo e uma defesa física obrigatória.
+4. Ressaltos e sinos: três alvos, sinos e cestos.
+5. O playground: construção completa.
+
+O teste atual destina-se a um ecrã único. Não existe ainda integração com a dobradiça física de telemóveis dobráveis.

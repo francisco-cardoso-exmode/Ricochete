@@ -74,3 +74,17 @@ test('Prediction still matches live movement after manually positioning defender
   for(let i=0;i<96;i++){s.step();if(i%4===0){const p=s.ball.translation(),q=path[sample++];assert.ok(Math.hypot(p.x-q.x,p.y-q.y,p.z-q.z)<.003);}}
  }finally{s.dispose();}
 });
+for(const [level,aims] of [[1,[0]],[2,[0,6]],[4,[0,4,-10]]]){
+ test(`Learning box ${level} is winnable with normal aiming and its own target count`,()=>{
+  const s=new Simulation(90,level);try{advance(s,180);for(const aim of aims){if(s.state==='won')break;s.resetBall();s.launch(72,aim);for(let i=0;i<2160&&s.state==='flying';i++)s.step();}
+   assert.equal(s.state,'won');assert.equal(s.targets.size,s.lesson.targets);assert.ok(s.levelPieces.length<50);
+  }finally{s.dispose();}
+ });
+}
+test('Learning box 3 waits for an actual save after hitting the target',()=>{
+ const s=new Simulation(90,3);try{s.moveCharacter(0,-.75);advance(s,180);s.launch();let pressed=false,targetBeforeSave=false;
+  for(let i=0;i<1500&&s.state==='flying';i++){const p=s.ball.translation(),v=s.ball.linvel();if(s.targets.size===1&&s.saves===0)targetBeforeSave=true;
+   if(!pressed&&s.shotTime>1&&v.z>0&&p.z>8.5){s.headbutt(0);pressed=true;}s.step();}
+  assert.equal(targetBeforeSave,true);assert.equal(s.state,'won');assert.equal(s.saves,1);
+ }finally{s.dispose();}
+});

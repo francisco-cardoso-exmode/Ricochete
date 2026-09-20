@@ -1,20 +1,21 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import { Quaternion, Euler } from 'three';
-import { LEVEL, SPAWN, BALL_RADIUS, STEP, foldRotation, transformUpper, hingeSegments, launchVelocity } from './level.js';
+import { LEVEL, LESSONS, piecesForLesson, SPAWN, BALL_RADIUS, STEP, foldRotation, transformUpper, hingeSegments, launchVelocity } from './level.js';
 import {CHARACTERS, CHARACTER_RADIUS, STRIKE_DURATION, STRIKE_COOLDOWN, characterPose, applyReturnDraft} from './characters.js';
 let initialization;
 export async function initPhysics(){ initialization ??= RAPIER.init(); await initialization; }
 const quat=(x=0,y=0,z=0)=>new Quaternion().setFromEuler(new Euler(x,y,z));
 const vec=p=>({x:p[0],y:p[1],z:p[2]});
 export class Simulation {
- constructor(angle=90){
+ constructor(angle=90,level=5){
+  this.level=Math.max(1,Math.min(5,level));this.lesson=LESSONS[this.level-1];this.levelPieces=piecesForLesson(this.level);
   this.world=new RAPIER.World({x:0,y:-9.81,z:0});this.world.timestep=STEP;
   this.world.numSolverIterations=8;
   this.events=new RAPIER.EventQueue(true);this.angle=angle;this.targetAngle=angle;
   this.base=this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
   this.upper=this.world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setRotation(quat(foldRotation(angle))));
   this.colliders=new Map();this.dynamic=new Map();this.hingeBodies=[];this.targets=new Set();this.score=0;this.shots=0;this.shotTime=0;this.crossings=0;this.inUpper=false;this.state='ready';this.bonusSeen=new Set();this.bellLastHit=new Map();
-  for(const item of LEVEL)this.createPiece(item);
+  for(const item of this.levelPieces)this.createPiece(item);
   this.buildHinge();
   this.ball=this.world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(SPAWN.x,SPAWN.y,SPAWN.z).setCcdEnabled(true).setLinearDamping(.04).setAngularDamping(.05).setCanSleep(false));
   this.ball.userData={kind:'ball'};
@@ -142,7 +143,7 @@ export class Simulation {
    // Inverse upper rotation; a threshold past the curved throat identifies the upper cavity.
    const inUpper=local.y>2.7&&local.z<3.6&&local.z>-.6;
    if(inUpper&&!this.inUpper){this.crossings++;this.pending.push({type:'crossing'});}this.inUpper=inUpper;
-   if(this.targets.size===3){this.state='won';this.pending.push({type:'won'});}
+   if(this.targets.size===this.lesson.targets&&this.saves>=this.lesson.saves){this.state='won';this.pending.push({type:'won'});}
    else if(p.z>12.25||p.y< -2.5||Math.abs(p.x)>16||p.z< -25)this.loseBall();
    else {
     const v=this.ball.linvel(),slow=v.x*v.x+v.y*v.y+v.z*v.z<.1;

@@ -101,3 +101,32 @@ export function launchVelocity(power=72,aim=0) {
  const speed=12+power*.15,a=aim*Math.PI/180;
  return {x:Math.sin(a)*speed,y:.8,z:-Math.cos(a)*speed};
 }
+
+export const LESSONS = [
+ {name:'O primeiro lançamento',hint:'Arrasta para apontar. Solta e acerta no alvo.',targets:1,saves:0},
+ {name:'Escolhe o ângulo',hint:'Muda a direção para acertar nos dois alvos.',targets:2,saves:0},
+ {name:'Devolve a bola',hint:'Acerta no alvo e faz uma defesa com Bico ou Bola.',targets:1,saves:1},
+ {name:'Ressaltos e sinos',hint:'Três alvos, cestos e sinos. Experimenta os ressaltos.',targets:3,saves:0},
+ {name:'O playground',hint:'Usa tudo o que aprendeste para conquistar os três alvos.',targets:3,saves:0},
+];
+export function piecesForLesson(level=5){
+ if(level>=5)return LEVEL;
+ const lesson=LESSONS[level-1];
+ return LEVEL.filter(p=>{
+  if(p.shell)return true;
+  if(p.target!==undefined)return p.target<lesson.targets;
+  // Keep a pair of low guide rails; no wall of decorative blocks in the first box.
+  if(p.side==='base'&&p.shape==='box'&&p.pos[2]===8.9)return true;
+  if(level===2&&p.side==='base'&&p.shape==='bumper')return true;
+  if(level===4){
+   if(['bell','hoop','bumper'].includes(p.shape))return true;
+   if(p.side==='upper'&&p.shape==='box'&&(p.pos[1]>10||Math.abs(p.pos[1]-7.5)<.01||Math.abs(p.pos[1]-6)<.01||p.size[0]<.2))return true;
+  }
+  return false;
+ }).map(p=>{
+  if(level===4&&p.target!==undefined)return {...p,pos:[p.target===0?0:p.target===1?1.8:-1.8,4.2,.14]};
+  if(level===4&&p.side==='upper'&&p.shape==='box'&&p.size[0]<.2&&p.pos[0]===1.45)return {...p,pos:[3.6,p.pos[1],p.pos[2]]};
+  if(level===4&&p.side==='upper'&&p.shape==='hoop'&&p.pos[0]>0)return {...p,pos:[3.6,p.pos[1],p.pos[2]]};
+  return p;
+ });
+}
