@@ -11,11 +11,11 @@ function add(side, shape, pos, size, extra = {}) {
 const b = (side, x,y,z,w,h,d,extra={})=>add(side,'box',[x,y,z],[w,h,d],extra);
 // Deep shells with a completely open throat at the hinge.
 b('base',0,-.35,5.5,10.6,.7,11.5,{color:0x56595e,shell:true});
-b('base',-5.15,.65,6,.35,1.7,12.5,{color:0x848e84,shell:true});
-b('base',5.15,.65,6,.35,1.7,12.5,{color:0x848e84,shell:true});
+b('base',-5.15,.65,6.2,.35,1.7,13.1,{color:0x848e84,shell:true});
+b('base',5.15,.65,6.2,.35,1.7,13.1,{color:0x848e84,shell:true});
 // Open lower edge: a real drain, rather than a reset timer.
 // Continuous external apron sits below the open playfield edge.
-b('base',0,-.56,11.9,10.6,.38,.42,{color:0x484b50,shell:true});
+b('base',0,-.56,12.7,10.6,.38,.42,{color:0x484b50,shell:true});
 b('upper',0,5.55,-.34,10.6,11.8,.65,{color:0x62666c,shell:true});
 b('upper',-5.15,5.5,1.52,.35,11.7,3.6,{color:0x90998c,shell:true});
 b('upper',5.15,5.5,1.52,.35,11.7,3.6,{color:0x90998c,shell:true});
@@ -109,13 +109,21 @@ export function launchVelocity(power=72,aim=0) {
 }
 
 export const LESSONS = [
- {name:'O primeiro lançamento',hint:'Arrasta para apontar. Solta e acerta no alvo.',targets:1,saves:0},
+ {name:'O sino e o ninho',hint:'Ajuda o Pingo: toca no sino e traz-o de volta ao ninho.',targets:1,saves:0,home:true},
  {name:'Escolhe o ângulo',hint:'Aponta à direita e puxa para baixo para subir ao segundo alvo.',targets:2,saves:0},
  {name:'Devolve a bola',hint:'Acerta no alvo e faz uma defesa com Bico ou Bola.',targets:1,saves:1},
  {name:'Ressaltos e sinos',hint:'Três alvos, cestos e sinos. Experimenta os ressaltos.',targets:3,saves:0},
  {name:'O playground',hint:'Usa tudo o que aprendeste para conquistar os três alvos.',targets:3,saves:0},
 ];
 export function piecesForLesson(level=5){
+ if(level===1)return [...LEVEL.filter(p=>p.shell),
+ {id:'first-bell',side:'upper',shape:'bell',pos:[0,4.2,.5],size:[.55,.65],color:0xc6b68e,bonus:'bell',target:0,points:100},
+ {id:'bell-bracket',side:'upper',shape:'box',pos:[0,5.2,.32],size:[1,.2,.65],color:0x777777},
+ {id:'bell-cord',side:'upper',shape:'box',pos:[0,4.83,.5],size:[.06,.65,.06],color:0x777777},
+ {id:'nest-floor',side:'base',shape:'box',pos:[0,-.7,11.85],size:[2.5,.25,1.45],color:0x888888},
+ ...[-1,1].map(side=>({id:'nest-wall-'+side,side:'base',shape:'box',pos:[side*1.25,-.25,11.85],size:[.15,.85,1.45],color:0x737373})),
+ {id:'nest-back',side:'base',shape:'box',pos:[0,-.25,12.55],size:[2.5,.85,.15],color:0x737373}
+ ];
  if(level>=5)return LEVEL.filter(p=>!p.tutorialWall&&!p.lessonTwo);
  const lesson=LESSONS[level-1];
  return LEVEL.filter(p=>{

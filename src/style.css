@@ -46,3 +46,7 @@ body.player #sound span{display:none}body.player header{gap:6px}
 #shot-power{position:absolute;top:62px;left:12px;z-index:12;width:164px;padding:12px 14px;background:#22292fe8;border:1px solid #a1abb34d;border-radius:12px;backdrop-filter:blur(8px)}
 #shot-power[hidden]{display:none}#shot-power label{display:flex;justify-content:space-between;font-size:10px;letter-spacing:1px;color:#dce2e7}
 #shot-power input{width:100%;margin:14px 0 8px;accent-color:#e8edf1}#shot-power small{font-size:9px;color:#aab4bc;line-height:1.4;display:block}
+
+body.player.home-lesson .crew-controls{display:flex;justify-content:flex-start}body.home-lesson #bola{display:none}body.player.home-lesson .crew-controls #bico{width:126px;min-height:46px}body.home-lesson .goals i{width:auto;min-width:42px;padding:0 8px;font-size:9px}body.player.home-lesson .play-instruction{bottom:62px}body.home-lesson #bico .crew-dot{display:none}
+
+#shot-direction{display:block;font-size:12px;margin:7px 0 4px;font-weight:600}body.opening-box #game{cursor:pointer}

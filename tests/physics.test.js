@@ -119,3 +119,17 @@ test('Returning to the launch circle recovers the same ball without spending a l
 test('Box 2 upper target accepts several nearby aim angles at medium and high power',()=>{
  for(const power of [50,72,85,100]){let hits=0;for(const aim of [4,5,6,7]){const s=new Simulation(90,2);try{s.launch(power,aim);for(let i=0;i<1400&&s.state==='flying';i++)s.step();if(s.targets.has(1))hits++;}finally{s.dispose();}}assert.ok(hits>=3,`Power ${power}: upper target needs a forgiving aiming window`);}
 });
+
+test('First box opens on bell contact but wins only after the same hero returns into the lowered nest',()=>{
+ const s=new Simulation(90,1);try{const handle=s.ball.handle;s.launch(72,0);let opened=false;
+ for(let i=0;i<180&&s.state==='flying';i++){const events=s.step();if(events.some(e=>e.type==='home-open')){opened=true;assert.equal(s.state,'flying');assert.ok(s.ball.translation().y>3);break;}}
+ assert.ok(opened);for(let i=0;i<1800&&s.state==='flying';i++){const p=s.ball.translation();if(p.z>9&&s.ball.linvel().z>0)s.assistHome();s.step();}
+ assert.equal(s.state,'won');assert.equal(s.ball.handle,handle);assert.equal(s.lives,5);assert.ok(s.ball.translation().z>11.35);assert.ok(s.ball.translation().y<.15);
+ }finally{s.dispose();}
+});
+test('Missing the bell never opens the nest and an escaped hero spends exactly one life',()=>{
+ const s=new Simulation(90,1);try{s.launch();s.ball.setTranslation({x:3,y:.4,z:11.9},true);s.ball.setLinvel({x:0,y:0,z:6},true);advance(s,120);assert.equal(s.homeOpen,false);assert.equal(s.state,'lost');assert.equal(s.lives,4);advance(s,120);assert.equal(s.lives,4);}finally{s.dispose();}
+});
+test('The bellows cannot remotely move a hero in the upper box and has a cooldown',()=>{
+ const s=new Simulation(90,1);try{s.launch();s.ball.setTranslation({x:1,y:5,z:1},true);assert.equal(s.assistHome(),true);assert.equal(s.assistHome(),false);advance(s,40);assert.equal(s.saves,0);}finally{s.dispose();}
+});

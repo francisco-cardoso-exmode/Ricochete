@@ -25,6 +25,11 @@ export class Simulation {
    body.userData={kind:'character',index};const collider=this.world.createCollider(RAPIER.ColliderDesc.ball(CHARACTER_RADIUS).setSensor(true).setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS),body);
    return {info,index,body,collider,strikeAge:Infinity,cooldown:0,connected:false,manualX:null,held:false};
   });
+  this.homeOpen=false;this.homeGatePhase=0;this.assistAge=Infinity;this.assistCooldown=0;
+  if(this.lesson.home){
+   this.homeGate=this.world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(0,.35,11.25));
+   this.world.createCollider(RAPIER.ColliderDesc.cuboid(1.2,.45,.09).setRestitution(.2),this.homeGate);
+  }
   this.resetBall();this.pending=[];
  }
  attach(desc,body,item){const c=this.world.createCollider(desc.setFriction(.3).setRestitution(item.bonus==='bumper'?1.12:.34).setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS),body);this.colliders.set(c.handle,{...item,sensor:c.isSensor()});return c;}
@@ -81,6 +86,7 @@ export class Simulation {
  }
  launch(power=72,aim=0){
   if(this.state!=='ready'||this.lives<=0)return false;
+  if(this.lesson.home){this.homeOpen=false;this.targets.clear();}
   this.ballCollider.setRestitution(.43+Math.max(0,power-72)/28*.22);
   this.ball.setBodyType(RAPIER.RigidBodyType.Dynamic,true);this.ball.setGravityScale(1,true);this.ball.setLinvel(launchVelocity(power,aim),true);this.ball.setAngvel({x:-9,y:0,z:0},true);this.state='flying';this.shotTime=0;this.shots++;return true;
  }
@@ -93,14 +99,18 @@ export class Simulation {
   if(c.manualX!==null){const x=c.body.translation().x;p.x=x+Math.max(-dt*9,Math.min(dt*9,c.manualX-x));}
   return p;
  }
- setDefending(index,held){const c=this.characters[index];if(c)c.held=held;}
+ setDefending(index,held){if(this.lesson.home)return;const c=this.characters[index];if(c)c.held=held;}
  headbutt(index){
   const c=this.characters[index];if(!c||this.state!=='flying'||c.cooldown>0)return false;
   c.strikeAge=0;c.cooldown=STRIKE_COOLDOWN;c.connected=false;return true;
  }
  beginFeed(){
   if(this.state!=='ready')return;this.state='feeding';this.feedTime=0;
-  this.ball.setTranslation({x:0,y:-.5,z:13},true);this.ball.setNextKinematicTranslation({x:0,y:-.5,z:13});
+  this.ball.setTranslation({x:0,y:-.5,z:12.15},true);this.ball.setNextKinematicTranslation({x:0,y:-.5,z:12.15});
+ }
+ assistHome(){
+  if(!this.lesson.home||this.state!=='flying'||this.assistCooldown>0)return false;
+  this.assistAge=0;this.assistCooldown=.8;return true;
  }
  recoverBall(){
   this.recoverStart={...this.ball.translation()};this.recoverAge=0;this.state='recovering';
@@ -133,6 +143,15 @@ export class Simulation {
   if(this.state==='won'){this.wonAge=(this.wonAge||0)+STEP;if(this.wonAge<2.5){this.time+=STEP;this.updateCharacters();this.world.step(this.events);}return this.pending;}
   if(['gameover','lost'].includes(this.state))return this.pending;
   this.time+=STEP;this.updateCharacters();
+  if(this.lesson.home){
+   this.assistAge+=STEP;this.assistCooldown=Math.max(0,this.assistCooldown-STEP);
+   this.homeGatePhase=Math.min(1,Math.max(0,this.homeGatePhase+(this.homeOpen?1:-1)*STEP*2));
+   this.homeGate.setNextKinematicTranslation({x:0,y:.35-this.homeGatePhase*1.3,z:11.25});
+   const p=this.ball.translation(),v=this.ball.linvel();
+   if(this.assistAge<.3&&this.state==='flying'&&p.z>8.8&&p.z<11.2&&p.y<.85&&v.z>0){
+    const m=this.ball.mass();this.ball.applyImpulse({x:(-p.x*3-v.x)*m,y:(.5-v.y)*m,z:(4-v.z)*m},true);this.assistAge=Infinity;this.saves++;this.pending.push({type:'home-assist'});
+   }
+  }
   if(this.state==='recovering'){
    this.recoverAge+=STEP;const t=Math.min(1,this.recoverAge/.45),u=t*t*(3-2*t),p=this.recoverStart;
    this.ball.setNextKinematicTranslation({x:p.x+(SPAWN.x-p.x)*u,y:p.y+(SPAWN.y-p.y)*u,z:p.z+(SPAWN.z-p.z)*u});this.world.step(this.events);
@@ -140,7 +159,7 @@ export class Simulation {
   }
   if(this.state==='feeding'){
    this.feedTime+=STEP;const t=Math.min(1,this.feedTime/.8),u=t*t*(3-2*t);
-   this.ball.setNextKinematicTranslation({x:0,y:t<.6?-.5:-.5+(SPAWN.y+.5)*((t-.6)/.4),z:13+(SPAWN.z-13)*u});
+   this.ball.setNextKinematicTranslation({x:0,y:t<.6?-.5:-.5+(SPAWN.y+.5)*((t-.6)/.4),z:12.15+(SPAWN.z-12.15)*u});
    this.world.step(this.events);if(t===1){this.resetBall();this.pending.push({type:'loaded'});}return this.pending;
   }
   if(this.state==='flying')applyReturnDraft(this.ball);
@@ -172,6 +191,7 @@ export class Simulation {
     this.pending.push({type:'ring',item,intensity:Math.min(1,Math.max(.25,Math.hypot(v.x,v.y,v.z)/18))});
    }
    if(item.target!==undefined&&!this.targets.has(item.target)){
+    if(this.lesson.home){this.homeOpen=true;this.pending.push({type:'home-open'});}
     this.targets.add(item.target);this.score+=item.points;this.pending.push({type:'target',item});
    }
    if(item.bonus&&(item.bonus!=='hoop'||item.sensor)&&!this.bonusSeen.has(item.id)){
@@ -184,8 +204,9 @@ export class Simulation {
    // Inverse upper rotation; a threshold past the curved throat identifies the upper cavity.
    const inUpper=local.y>2.7&&local.z<3.6&&local.z>-.6;
    if(inUpper&&!this.inUpper){this.crossings++;this.pending.push({type:'crossing'});}this.inUpper=inUpper;
-   if(this.targets.size===this.lesson.targets&&this.saves>=this.lesson.saves){this.state='won';this.pending.push({type:'won'});}
-   else if(this.shotTime>.4&&this.ball.linvel().z>0&&p.y<.9&&Math.hypot(p.x-SPAWN.x,p.z-SPAWN.z)<1.05)this.recoverBall();
+   if(this.lesson.home&&this.homeOpen&&Math.abs(p.x)<1.12&&p.z>11.35&&p.z<12.5&&p.y<.15){this.state='won';this.pending.push({type:'won'});}
+   else if(!this.lesson.home&&this.targets.size===this.lesson.targets&&this.saves>=this.lesson.saves){this.state='won';this.pending.push({type:'won'});}
+   else if(!this.homeOpen&&this.shotTime>.4&&this.ball.linvel().z>0&&p.y<.9&&Math.hypot(p.x-SPAWN.x,p.z-SPAWN.z)<1.05)this.recoverBall();
    else if(p.z>12.25||p.y< -2.5||Math.abs(p.x)>16||p.z< -25)this.loseBall();
    else {
     const v=this.ball.linvel(),slow=v.x*v.x+v.y*v.y+v.z*v.z<.1;

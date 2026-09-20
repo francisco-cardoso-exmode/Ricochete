@@ -77,3 +77,9 @@ A vitória deixa a ação continuar 2,4 segundos antes do resultado. Ao apontar,
 A partir da caixa 2 há duas pequenas pilhas de tijolos com arestas gastas. Impactos acima de 4 unidades/s partem cada tijolo em oito fragmentos físicos, com gravidade, rotação e colisão. São peças pré-divididas, não fratura procedural; o limite é 64 fragmentos para conter o custo em telemóveis. O tratamento visual continua cinzento nesta etapa, inspirado nos volumes e desgaste da referência.
 
 A bola que regressa ao círculo é recolhida suavemente e pode ser relançada sem gastar vida. Puxar acima de 72% aumenta a velocidade e a elasticidade. A cavidade superior tem 3,6 unidades de profundidade; as barras diagonais e riscas exteriores foram retiradas.
+
+## Primeira caixa: O sino e o ninho
+
+Pingo é o nome provisório da personagem jogável: a única bola física, com olhos, tufo e reações à força/velocidade. Na caixa 1, tocar no sino abre uma comporta real. Só cair no ninho rebaixado conclui a jogada. O botão FOLE aplica um impulso de ar local na base, centra e abranda o regresso, com recarga de 0,8 segundos. Fora dessa zona não afeta a bola. A vitória aguarda o regresso; uma saída lateral desconta uma vida. Ninho e reserva estão dentro do perímetro exterior da caixa. As caixas 2–5 mantêm os objetivos anteriores nesta primeira experiência.
+
+A inspeção da vista permite arrastar fora da caixa (±8° horizontal, ±5° vertical) e usar dois dedos ou roda do rato para zoom de 92%–110%. Dois cliques fora repõem a vista. O gesto de dois dedos cancela a mira sem lançar.
