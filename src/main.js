@@ -69,7 +69,7 @@ async function start(){
    const events=sim.step();for(const event of events){
     if(event.type==='target'){graphics.hit(event.item);toast(`Alvo ${event.item.target+1} · +${event.item.points} pontos`);sound('target');}
     if(['bell','hoop','bumper'].includes(event.type)){graphics.hit(event.item);toast({bell:'Ding! · +50 pontos',hoop:'Cesto! · +75 pontos',bumper:'Bumper · +10 pontos'}[event.type]);sound(event.type);}
-    if(event.type==='crossing'){toast('Pela dobra. A mesma bola.');sound('crossing');}
+    if(event.type==='crossing'){sound('crossing');}
     if(event.type==='impact')sound('impact');
     if(event.type==='save'){say(event.character,event.character===0?'Viste? Fácil.':'Foi sem querer!');toast('Cabeçada! +25');sound('target');}
     if(event.type==='lost'){resetAt=now+1100;say(sim.lives%2,'Ups… era tua, não era?');sound('impact');}
@@ -82,7 +82,7 @@ async function start(){
   if(sim.time>nextQuip&&['ready','flying'].includes(sim.state)){const i=Math.floor(sim.time/6)%2;say(i,i===0?'Essa era a tua melhor?':'Eu fazia melhor… acho.');nextQuip=sim.time+10;}
   for(let i=0;i<2;i++){const el=$('#speech-'+i);if(sim.time>=speechUntil[i])el.hidden=true;else{const p=graphics.characterScreen(i);el.style.left=`${p.x}px`;el.style.top=`${p.y}px`;}}
   if(sim.state==='ready'&&showPath&&(predictionDirty||Math.abs(sim.angle-predictionAngle)>.005)&&now-predictionAt>130){graphics.setTrajectory(sim.predict(power,aim));predictionDirty=false;predictionAt=now;predictionAngle=sim.angle;}
-  graphics.sync();graphics.render();if(now-lastHUD>100){updateHUD();lastHUD=now;}
+  graphics.showPath=showPath&&(lab||!!drag);graphics.sync();graphics.render();if(now-lastHUD>100){updateHUD();lastHUD=now;}
  }
  requestAnimationFrame(tick);
  if(new URLSearchParams(location.search).has('debug'))window.__ricochete={get sim(){return sim;},get graphics(){return graphics;},get power(){return power;},get aim(){return aim;},setShot(p,a){power=p;aim=a;predictionDirty=true;updateControls();},fold,launch,reset,restart,defend,pause(value=true){paused=value;},step(count=1){for(let i=0;i<count;i++)sim.step();graphics.sync();graphics.render();updateHUD();},snapshot(){return{state:sim.state,ball:{...sim.ball.translation()},handle:sim.ball.handle,angle:sim.angle,score:sim.score,lives:sim.lives,saves:sim.saves,targets:[...sim.targets],shots:sim.shots,crossings:sim.crossings,bodies:sim.world.bodies.len(),colliders:sim.world.colliders.len()};}};

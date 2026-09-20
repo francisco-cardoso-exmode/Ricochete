@@ -30,7 +30,7 @@ export class Graphics {
   this.pieces=new Map();this.dynamics=new Map();this.chains=[];
   for(const item of LEVEL){const obj=this.piece(item);obj.userData=item;this.pieces.set(item.id,obj);if(item.dynamic||item.suspended){this.scene.add(obj);this.dynamics.set(item.id,obj);}else(item.side==='upper'?this.upper:this.base).add(obj);}
   this.addDetails();this.makeLauncher();this.makeHinge();this.makeCharacters();
-  this.ball=mesh(new THREE.SphereGeometry(BALL_RADIUS,32,24),new THREE.MeshStandardMaterial({color:0xd9dce0,metalness:.96,roughness:.13}),false);this.scene.add(this.ball);
+  this.ball=mesh(new THREE.SphereGeometry(BALL_RADIUS,32,24),new THREE.MeshStandardMaterial({color:0xfff0ba,emissive:0xffcf65,emissiveIntensity:.45,metalness:.25,roughness:.25}),false);this.scene.add(this.ball);
   const glow=torus(BALL_RADIUS*1.05,.012,new THREE.MeshBasicMaterial({color:0xecfbd2}));this.ball.add(glow);glow.rotation.x=.6;
   this.topCamera=new THREE.PerspectiveCamera(40,1,.08,100);this.bottomCamera=new THREE.PerspectiveCamera(40,1,.08,100);this.overviewCamera=new THREE.PerspectiveCamera(40,1,.08,140);
   this.path=new THREE.Group();this.scene.add(this.path);this.pathDots=[];
@@ -145,11 +145,17 @@ export class Graphics {
  }
  updateCameras(){
   const aspect=this.width/(this.height/2);this.topCamera.aspect=aspect;this.bottomCamera.aspect=aspect;this.overviewCamera.aspect=this.width/this.height;
-  // Front upper camera looks into the cavity, offset to reveal top/right faces.
-  const dist=Math.max(19.5,12.5/aspect);const a=this.sim.angle;
-  const eye=transformUpper({x:2.5,y:6.4,z:dist},a),target=transformUpper({x:0,y:5.5,z:.5},a),up=transformUpper({x:0,y:1,z:0},a);
+  // Frame the INSIDE of each box, not the whole object sitting in a studio.
+  // The side walls extend past the viewport edges; perspective depth is retained.
+  const distance=5.05/(Math.tan(THREE.MathUtils.degToRad(20))*aspect);
+  const a=this.sim.angle;
+  const eye=transformUpper({x:0,y:5.6,z:distance+1.05},a);
+  const target=transformUpper({x:0,y:5.6,z:0},a),up=transformUpper({x:0,y:1,z:0},a);
   this.topCamera.position.copy(eye);this.topCamera.up.set(up.x,up.y,up.z);this.topCamera.lookAt(target.x,target.y,target.z);
-  const bd=Math.max(19,12.8/aspect);this.bottomCamera.position.set(2.4,bd,10.9);this.bottomCamera.up.set(0,0,-1);this.bottomCamera.lookAt(0,0,6.2);
+  // Near top-down perspective: depth comes from solid walls, faces and shadows,
+  // rather than an oblique view of a small board surrounded by empty space.
+  this.bottomCamera.position.set(0,distance+.5,6.45);
+  this.bottomCamera.up.set(0,0,-1);this.bottomCamera.lookAt(0,0,7.8);
   const od=Math.max(31,20/this.overviewCamera.aspect);this.overviewCamera.position.set(od*.42,od*.65,od*.87);this.overviewCamera.lookAt(0,3.5,this.sim.angle>145?-1:3);
   for(const c of [this.topCamera,this.bottomCamera,this.overviewCamera])c.updateProjectionMatrix();
  }
@@ -163,7 +169,7 @@ export class Graphics {
   if(Math.abs(sim.angle-this.lastAngle)>.005){this.lastAngle=sim.angle;this.updateHinge();this.updateCameras();}
   for(const [id,obj]of this.dynamics){const d=sim.dynamic.get(id);obj.position.copy(d.body.translation());obj.quaternion.copy(d.body.rotation());}
   for(const {item,links}of this.chains){const anchor=transformUpper(item.anchor,sim.angle),p=sim.dynamic.get(item.id).body.translation();links.forEach((link,i)=>{link.position.lerpVectors(new THREE.Vector3(anchor.x,anchor.y,anchor.z),new THREE.Vector3(p.x,p.y+.28,p.z),i/links.length);link.rotation.y=i%2*Math.PI/2;});}
-  if(sim.state==='flying'){this.history.push(this.ball.position.clone());if(this.history.length>22)this.history.shift();}else this.history=[];
+  if(sim.state==='flying'){this.history.push(this.ball.position.clone());if(this.history.length>7)this.history.shift();}else this.history=[];
   this.trail.geometry.dispose();this.trail.geometry=new THREE.BufferGeometry().setFromPoints(this.history);
   this.path.visible=sim.state==='ready'&&this.showPath!==false;
   for(let i=this.pulses.length-1;i>=0;i--){const p=this.pulses[i];p.scale.multiplyScalar(1.04);p.material.opacity-=.025;if(p.material.opacity<=0){this.scene.remove(p);p.geometry.dispose();p.material.dispose();this.pulses.splice(i,1);}}
