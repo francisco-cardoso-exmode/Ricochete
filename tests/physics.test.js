@@ -46,3 +46,15 @@ test('A headbutt at the wrong time is a miss, without remotely saving the ball',
 test('Characters patrol predictably and targets survive a lost life',()=>{
  const s=new Simulation();try{const before={...s.characters[0].body.translation()};advance(s,180);assert.ok(Math.abs(before.x-s.characters[0].body.translation().x)>.5);s.launch();for(let i=0;i<1500&&s.state==='flying';i++)s.step();assert.ok(s.targets.has(0));s.nextBall();assert.ok(s.targets.has(0));assert.equal(s.lives,4);assert.equal(s.state,'ready');assert.equal(s.headbutt(0),false);}finally{s.dispose();}
 });
+test('Bells ring on repeated physical hits, swing, and award their bonus only once',()=>{
+ const s=new Simulation();try{
+  advance(s,180);s.launch();s.ball.setGravityScale(0,true);
+  const bell=[...s.dynamic.values()].find(d=>d.item.shape==='bell');let rings=0,bonuses=0,maxMotion=0;
+  for(let hit=0;hit<2;hit++){
+   s.ball.setTranslation({x:0,y:15,z:8},true);s.ball.setLinvel({x:0,y:0,z:0},true);advance(s,35);
+   const p={...bell.body.translation()};s.ball.setTranslation({x:p.x-1.1,y:p.y,z:p.z},true);s.ball.setLinvel({x:8,y:0,z:0},true);
+   for(let i=0;i<35;i++){for(const e of s.step()){if(e.item?.id===bell.item.id){if(e.type==='ring')rings++;if(e.type==='bell')bonuses++;}}maxMotion=Math.max(maxMotion,Math.abs(bell.body.translation().x-p.x));}
+  }
+  assert.ok(rings>=2,'Every separated hit rings');assert.equal(bonuses,1,'No score farming');assert.ok(maxMotion>.03,'Bell physically swings');
+ }finally{s.dispose();}
+});

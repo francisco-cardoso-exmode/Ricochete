@@ -13,7 +13,7 @@ export class Simulation {
   this.events=new RAPIER.EventQueue(true);this.angle=angle;this.targetAngle=angle;
   this.base=this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
   this.upper=this.world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setRotation(quat(foldRotation(angle))));
-  this.colliders=new Map();this.dynamic=new Map();this.hingeBodies=[];this.targets=new Set();this.score=0;this.shots=0;this.shotTime=0;this.crossings=0;this.inUpper=false;this.state='ready';this.bonusSeen=new Set();
+  this.colliders=new Map();this.dynamic=new Map();this.hingeBodies=[];this.targets=new Set();this.score=0;this.shots=0;this.shotTime=0;this.crossings=0;this.inUpper=false;this.state='ready';this.bonusSeen=new Set();this.bellLastHit=new Map();
   for(const item of LEVEL)this.createPiece(item);
   this.buildHinge();
   this.ball=this.world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(SPAWN.x,SPAWN.y,SPAWN.z).setCcdEnabled(true).setLinearDamping(.04).setAngularDamping(.05).setCanSleep(false));
@@ -31,7 +31,7 @@ export class Simulation {
   const {shape,pos,size,side}=item;let body=side==='upper'?this.upper:this.base;let p=vec(pos);let q=quat(...(item.rotation||[0,0,0]));
   if(item.dynamic||item.suspended){
    const initial=side==='upper'?transformUpper(p,this.angle):p;
-   body=this.world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(initial.x,initial.y,initial.z).setLinearDamping(.15).setAngularDamping(.4).setCcdEnabled(true));
+   body=this.world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(initial.x,initial.y,initial.z).setLinearDamping(item.shape==='bell'?.06:.15).setAngularDamping(item.shape==='bell'?.12:.4).setCcdEnabled(true));
    this.dynamic.set(item.id,{body,item});
    if(item.suspended){
     const anchor=vec(item.anchor),length=item.anchor[1]-pos[1];
@@ -117,6 +117,10 @@ export class Simulation {
    const character=this.characters.find(c=>c.collider.handle===other);if(character){this.connectHeadbutt(character);return;}
    const item=this.colliders.get(other);if(!item)return;
    this.pending.push({type:'impact',item});
+   if(item.shape==='bell'&&this.time-(this.bellLastHit.get(item.id)??-Infinity)>.16){
+    this.bellLastHit.set(item.id,this.time);const v=this.ball.linvel();
+    this.pending.push({type:'ring',item,intensity:Math.min(1,Math.max(.25,Math.hypot(v.x,v.y,v.z)/18))});
+   }
    if(item.target!==undefined&&!this.targets.has(item.target)){
     this.targets.add(item.target);this.score+=item.points;this.pending.push({type:'target',item});
    }

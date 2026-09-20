@@ -27,7 +27,7 @@ export class Graphics {
   const light=new THREE.DirectionalLight(0xfff9ef,2.3);light.position.set(-8,20,14);light.castShadow=true;light.shadow.mapSize.set(2048,2048);light.shadow.camera.left=-17;light.shadow.camera.right=17;light.shadow.camera.top=19;light.shadow.camera.bottom=-17;light.shadow.camera.far=60;light.shadow.bias=-.00015;light.shadow.normalBias=.025;light.shadow.radius=3;this.scene.add(light);this.scene.add(light.target);
   const fill=new THREE.DirectionalLight(0xd9e8ff,.65);fill.position.set(10,10,-10);this.scene.add(fill);
   this.base=new THREE.Group();this.upper=new THREE.Group();this.hinge=new THREE.Group();this.scene.add(this.base,this.upper,this.hinge);this.upper.rotation.x=foldRotation(simulation.angle);
-  this.pieces=new Map();this.dynamics=new Map();this.chains=[];
+  this.pieces=new Map();this.dynamics=new Map();this.chains=[];this.bellRings=new Map();
   for(const item of LEVEL){const obj=this.piece(item);obj.userData=item;this.pieces.set(item.id,obj);if(item.dynamic||item.suspended){this.scene.add(obj);this.dynamics.set(item.id,obj);}else(item.side==='upper'?this.upper:this.base).add(obj);}
   this.addDetails();this.makeLauncher();this.makeHinge();this.makeCharacters();
   this.ball=mesh(new THREE.SphereGeometry(BALL_RADIUS,32,24),new THREE.MeshStandardMaterial({color:0xfff0ba,emissive:0xffcf65,emissiveIntensity:.45,metalness:.25,roughness:.25}),false);this.scene.add(this.ball);
@@ -80,7 +80,9 @@ export class Graphics {
    const profile=[[.05,.35],[.2,.31],[.26,.19],[.29,-.1],[.42,-.25],[.44,-.3]].map(p=>new THREE.Vector2(...p));
    g.add(mesh(new THREE.LatheGeometry(profile.reverse(),24),mat));
    const rim=torus(.42,.04,dark);rim.rotation.x=Math.PI/2;at(g,rim,[0,-.28,0]);
-   at(g,mesh(new THREE.SphereGeometry(.1,12,8),dark),[0,-.39,0]);
+   const clapper=new THREE.Group();clapper.name='clapper';g.add(clapper);
+   at(clapper,mesh(new THREE.CylinderGeometry(.025,.025,.32,8),dark),[0,-.19,0]);
+   at(clapper,mesh(new THREE.SphereGeometry(.1,12,8),dark),[0,-.39,0]);
   }
   g.position.set(...pos);if(item.rotation)g.rotation.set(...item.rotation);
   if(item.suspended){const links=[];for(let i=0;i<12;i++){const link=torus(.065,.018,material(0x7d8585));this.scene.add(link);links.push(link);}this.chains.push({item,links});}
@@ -181,12 +183,14 @@ export class Graphics {
 
   if(Math.abs(sim.angle-this.lastAngle)>.005){this.lastAngle=sim.angle;this.updateHinge();this.updateCameras();}
   for(const [id,obj]of this.dynamics){const d=sim.dynamic.get(id);obj.position.copy(d.body.translation());obj.quaternion.copy(d.body.rotation());}
+  for(const [id,hit]of this.bellRings){const age=sim.time-hit.time,clapper=this.pieces.get(id)?.getObjectByName('clapper');if(clapper)clapper.rotation.z=Math.sin(age*25)*.5*hit.intensity*Math.exp(-age*1.5);if(age>4)this.bellRings.delete(id);}
   for(const {item,links}of this.chains){const anchor=transformUpper(item.anchor,sim.angle),p=sim.dynamic.get(item.id).body.translation();links.forEach((link,i)=>{link.position.lerpVectors(new THREE.Vector3(anchor.x,anchor.y,anchor.z),new THREE.Vector3(p.x,p.y+.28,p.z),i/links.length);link.rotation.y=i%2*Math.PI/2;});}
   if(sim.state==='flying'){this.history.push(this.ball.position.clone());if(this.history.length>7)this.history.shift();}else this.history=[];
   this.trail.geometry.dispose();this.trail.geometry=new THREE.BufferGeometry().setFromPoints(this.history);
   this.path.visible=sim.state==='ready'&&this.showPath!==false;
   for(let i=this.pulses.length-1;i>=0;i--){const p=this.pulses[i];p.scale.multiplyScalar(1.04);p.material.opacity-=.025;if(p.material.opacity<=0){this.scene.remove(p);p.geometry.dispose();p.material.dispose();this.pulses.splice(i,1);}}
  }
+ ring(item,intensity){this.bellRings.set(item.id,{time:this.sim.time,intensity});}
  hit(item){
   const obj=this.pieces.get(item.id);if(item.target!==undefined){obj.traverse(o=>{if(o.isMesh){o.material=o.material.clone();o.material.emissive=new THREE.Color(0x8fbd42);o.material.emissiveIntensity=.2;}});}
   const pulse=torus(.45,.025,new THREE.MeshBasicMaterial({color:0xe6ffb2,transparent:true,opacity:1}));pulse.position.copy(this.ball.position);this.scene.add(pulse);this.pulses.push(pulse);

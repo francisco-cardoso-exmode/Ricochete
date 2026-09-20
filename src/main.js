@@ -14,10 +14,18 @@ function say(index,text){$('#speech-'+index).textContent=text;$('#speech-'+index
 function defend(index){if(sim.headbutt(index)){say(index,index===0?'Deixa comigo!':'Eu? Agora?!');sound('launch');}}
 function showResult(won){$('#victory').hidden=false;$('#result-label').textContent=won?'LEVEL 01 / COMPLETO':'FIM DA PARTIDA';$('#result-title').textContent=won?'Calaste as duas.':'Elas riem por último.';$('#result-text').textContent=won?`${sim.score} pontos · ${sim.saves} defesas. Os três alvos são teus.`:'As cinco bolas escaparam. Mais uma tentativa?';}
 let sim,graphics,power=72,aim=0,desiredAngle=90,showPath=true,overview=false,predictionDirty=true,predictionAt=0,predictionAngle=-1,paused=false;
-let audioContext,audioOn=false,lastTone=0,toastTimer,resetAt=0;
-function sound(type){
+let audioContext,audioOn=true,lastTone=0,toastTimer,resetAt=0;
+function sound(type,item,intensity=1){
  if(!audioOn)return;
- try{audioContext??=new (window.AudioContext||window.webkitAudioContext)();audioContext.resume();const t=audioContext.currentTime;if(t-lastTone<.07)return;lastTone=t;
+ try{audioContext??=new (window.AudioContext||window.webkitAudioContext)();audioContext.resume();const t=audioContext.currentTime;if(type!=='bell'&&t-lastTone<.07)return;lastTone=t;
+ if(type==='bell'){
+  const fundamental=item?.size?.[0]>.4?660:item?.pos?.[0]<0?880:1046;
+  for(const [ratio,level,decay] of [[1,.10,1.7],[2.76,.045,1.05],[5.4,.018,.48]]){
+   const o=audioContext.createOscillator(),g=audioContext.createGain();o.type='sine';o.frequency.value=fundamental*ratio;
+   g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(level*Math.max(.25,intensity),t+.004);g.gain.exponentialRampToValueAtTime(.0001,t+decay);
+   o.connect(g);g.connect(audioContext.destination);o.start(t);o.stop(t+decay+.02);o.onended=()=>{o.disconnect();g.disconnect();};
+  }return;
+ }
  const osc=audioContext.createOscillator(),gain=audioContext.createGain();osc.type=type==='bell'?'sine':'triangle';osc.frequency.setValueAtTime({target:740,bell:1100,hoop:880,impact:150,launch:240,crossing:520,won:1046}[type]||300,t);osc.frequency.exponentialRampToValueAtTime(type==='impact'?60:440,t+.18);gain.gain.setValueAtTime(.05,t);gain.gain.exponentialRampToValueAtTime(.001,t+.35);osc.connect(gain).connect(audioContext.destination);osc.start(t);osc.stop(t+.36);}catch{/* Audio never blocks physics. */}
 }
 function toast(message){$('#toast').textContent=message;$('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),2200);}
@@ -68,9 +76,10 @@ async function start(){
   if(!paused&&!document.hidden){accumulator+=dt;while(accumulator>=STEP){
    const events=sim.step();for(const event of events){
     if(event.type==='target'){graphics.hit(event.item);toast(`Alvo ${event.item.target+1} · +${event.item.points} pontos`);sound('target');}
-    if(['bell','hoop','bumper'].includes(event.type)){graphics.hit(event.item);toast({bell:'Ding! · +50 pontos',hoop:'Cesto! · +75 pontos',bumper:'Bumper · +10 pontos'}[event.type]);sound(event.type);}
+    if(['bell','hoop','bumper'].includes(event.type)){graphics.hit(event.item);toast({bell:'Ding! · +50 pontos',hoop:'Cesto! · +75 pontos',bumper:'Bumper · +10 pontos'}[event.type]);if(event.type!=='bell')sound(event.type);}
     if(event.type==='crossing'){sound('crossing');}
-    if(event.type==='impact')sound('impact');
+    if(event.type==='ring'){graphics.ring(event.item,event.intensity);sound('bell',event.item,event.intensity);}
+    if(event.type==='impact'&&event.item?.shape!=='bell')sound('impact');
     if(event.type==='save'){say(event.character,event.character===0?'Viste? Fácil.':'Foi sem querer!');toast('Cabeçada! +25');sound('target');}
     if(event.type==='lost'){resetAt=now+1100;say(sim.lives%2,'Ups… era tua, não era?');sound('impact');}
     if(event.type==='gameover')showResult(false);
