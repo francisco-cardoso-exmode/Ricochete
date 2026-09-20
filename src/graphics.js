@@ -4,12 +4,12 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { LEVEL, SPAWN, BALL_RADIUS, foldRotation, hingeSegments, transformUpper } from './level.js';
 import {CHARACTERS, CHARACTER_RADIUS, STRIKE_DURATION} from './characters.js';
 const dark=new THREE.MeshStandardMaterial({color:0x35393b,roughness:.55,metalness:.45});
-const edgeMaterial=new THREE.LineBasicMaterial({color:0x343739,transparent:true,opacity:.7});
+const edgeMaterial=new THREE.LineBasicMaterial({color:0x24272a,transparent:true,opacity:.8});
 const materials=new Map();
-function material(color){if(!materials.has(color)){const c=new THREE.Color(color);const v=(c.r+c.g+c.b)/3;c.setRGB(v,v,v);materials.set(color,new THREE.MeshStandardMaterial({color:c,roughness:.65,metalness:.18}));}return materials.get(color);}
+function material(color){if(!materials.has(color)){const c=new THREE.Color(color);const v=(c.r+c.g+c.b)/3;c.setRGB(v,v,v);materials.set(color,new THREE.MeshStandardMaterial({color:c,roughness:.43,metalness:.3}));}return materials.get(color);}
 const geometries=new Map();
-function rounded(w,h,d){const key=[w,h,d].join('/');if(!geometries.has(key))geometries.set(key,new RoundedBoxGeometry(w,h,d,2,Math.min(.055,w/8,h/8,d/8)));return geometries.get(key);}
-function mesh(geo,mat,outline=true){const m=new THREE.Mesh(geo,mat);m.castShadow=true;m.receiveShadow=true;if(outline){const edges=new THREE.LineSegments(new THREE.EdgesGeometry(geo,35),edgeMaterial);m.add(edges);}return m;}
+function rounded(w,h,d){const key=[w,h,d].join('/');if(!geometries.has(key))geometries.set(key,new RoundedBoxGeometry(w,h,d,3,Math.min(.085,w/8,h/8,d/8)));return geometries.get(key);}
+function mesh(geo,mat,outline=true){const m=new THREE.Mesh(geo,mat);m.castShadow=true;m.receiveShadow=true;if(outline){const edges=new THREE.LineSegments(new THREE.EdgesGeometry(geo,22),edgeMaterial);m.add(edges);}return m;}
 function box(w,h,d,color=0xaaaaaa){return mesh(rounded(w,h,d),material(color));}
 function torus(r,t,mat=dark){return mesh(new THREE.TorusGeometry(r,t,8,36),mat,false);}
 function cylinder(r,h,mat=dark){return mesh(new THREE.CylinderGeometry(r,r,h,28),mat);}
@@ -20,21 +20,21 @@ export class Graphics {
   this.canvas=canvas;this.sim=simulation;
   this.renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});
   this.renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-  this.renderer.toneMapping=THREE.ACESFilmicToneMapping;this.renderer.toneMappingExposure=.95;
+  this.renderer.toneMapping=THREE.ACESFilmicToneMapping;this.renderer.toneMappingExposure=.94;
   this.scene=new THREE.Scene();this.scene.background=new THREE.Color(0x565b60);
-  const environment=new RoomEnvironment();const pmrem=new THREE.PMREMGenerator(this.renderer);this.env=pmrem.fromScene(environment,.04);this.scene.environment=this.env.texture;this.scene.environmentIntensity=.35;environment.dispose();pmrem.dispose();
-  this.scene.add(new THREE.HemisphereLight(0xffffff,0x3d4248,.85));
-  const light=new THREE.DirectionalLight(0xfff9ef,2.3);light.position.set(-8,20,14);light.castShadow=true;light.shadow.mapSize.set(2048,2048);light.shadow.camera.left=-17;light.shadow.camera.right=17;light.shadow.camera.top=19;light.shadow.camera.bottom=-17;light.shadow.camera.far=60;light.shadow.bias=-.00015;light.shadow.normalBias=.025;light.shadow.radius=3;this.scene.add(light);this.scene.add(light.target);
-  const fill=new THREE.DirectionalLight(0xd9e8ff,.65);fill.position.set(10,10,-10);this.scene.add(fill);
+  const environment=new RoomEnvironment();const pmrem=new THREE.PMREMGenerator(this.renderer);this.env=pmrem.fromScene(environment,.04);this.scene.environment=this.env.texture;this.scene.environmentIntensity=.65;environment.dispose();pmrem.dispose();
+  this.scene.add(new THREE.HemisphereLight(0xffffff,0x242629,.65));
+  const light=new THREE.DirectionalLight(0xffffff,2.05);light.position.set(-10,18,20);light.castShadow=true;light.shadow.mapSize.set(2048,2048);light.shadow.camera.left=-17;light.shadow.camera.right=17;light.shadow.camera.top=19;light.shadow.camera.bottom=-17;light.shadow.camera.far=60;light.shadow.bias=-.00015;light.shadow.normalBias=.025;light.shadow.radius=3;this.scene.add(light);this.scene.add(light.target);
+  const fill=new THREE.DirectionalLight(0xe5e9ef,.75);fill.position.set(10,10,-10);this.scene.add(fill);
   this.base=new THREE.Group();this.upper=new THREE.Group();this.hinge=new THREE.Group();this.scene.add(this.base,this.upper,this.hinge);this.upper.rotation.x=foldRotation(simulation.angle);
   this.pieces=new Map();this.dynamics=new Map();this.chains=[];this.bellRings=new Map();
   for(const item of LEVEL){const obj=this.piece(item);obj.userData=item;this.pieces.set(item.id,obj);if(item.dynamic||item.suspended){this.scene.add(obj);this.dynamics.set(item.id,obj);}else(item.side==='upper'?this.upper:this.base).add(obj);}
   this.addDetails();this.makeLauncher();this.makeHinge();this.makeCharacters();
-  this.ball=mesh(new THREE.SphereGeometry(BALL_RADIUS,32,24),new THREE.MeshStandardMaterial({color:0xfff0ba,emissive:0xffcf65,emissiveIntensity:.45,metalness:.25,roughness:.25}),false);this.scene.add(this.ball);
+  this.ball=mesh(new THREE.SphereGeometry(BALL_RADIUS,32,24),new THREE.MeshStandardMaterial({color:0xf2f4f6,emissive:0xb4bdc4,emissiveIntensity:.12,metalness:.85,roughness:.16}),false);this.scene.add(this.ball);
   const glow=torus(BALL_RADIUS*1.05,.012,new THREE.MeshBasicMaterial({color:0xecfbd2}));this.ball.add(glow);glow.rotation.x=.6;
   this.topCamera=new THREE.PerspectiveCamera(40,1,.08,100);this.bottomCamera=new THREE.PerspectiveCamera(40,1,.08,100);this.overviewCamera=new THREE.PerspectiveCamera(40,1,.08,140);
   this.path=new THREE.Group();this.scene.add(this.path);
-  const aimMaterial=new THREE.MeshBasicMaterial({color:0xffedb3,transparent:true,opacity:.9});
+  const aimMaterial=new THREE.MeshBasicMaterial({color:0xf0f2f4,transparent:true,opacity:.9});
   this.aimStem=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,1,8),aimMaterial);
   this.aimTip=new THREE.Mesh(new THREE.ConeGeometry(.12,.3,12),aimMaterial);
   this.path.add(this.aimStem,this.aimTip);
@@ -116,7 +116,7 @@ export class Graphics {
  }
  makeCharacters(){
   this.crew=CHARACTERS.map((info,index)=>{
-   const group=new THREE.Group(),skin=new THREE.MeshStandardMaterial({color:info.color,roughness:.45,metalness:.08});
+   const group=new THREE.Group(),skin=new THREE.MeshStandardMaterial({color:index===0?0xd3d6d9:0x858b94,roughness:.4,metalness:.3});
    const body=mesh(new THREE.SphereGeometry(CHARACTER_RADIUS,28,20),skin,false);group.add(body);
    const face=new THREE.Group();face.rotation.x=-.83;group.add(face);
    const pupils=[];
@@ -127,7 +127,7 @@ export class Graphics {
    }
    const smile=new THREE.CatmullRomCurve3([new THREE.Vector3(-.24,-.16,.565),new THREE.Vector3(0,-.27,.595),new THREE.Vector3(.24,-.13,.565)]);
    face.add(mesh(new THREE.TubeGeometry(smile,14,.032,6,false),dark,false));
-   const halo=torus(.83,.022,new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.75}));halo.rotation.x=Math.PI/2;this.scene.add(halo);
+   const halo=torus(.83,.022,new THREE.MeshBasicMaterial({color:0xe0e4e8,transparent:true,opacity:.35}));halo.rotation.x=Math.PI/2;this.scene.add(halo);
    this.scene.add(group);return {group,body,pupils,halo,index};
   });
   const drain=box(9.85,.09,.45,0x25282b);at(this.base,drain,[0,-.18,11.65]);
@@ -153,13 +153,13 @@ export class Graphics {
   // The side walls extend past the viewport edges; perspective depth is retained.
   const distance=5.05/(Math.tan(THREE.MathUtils.degToRad(20))*aspect);
   const a=this.sim.angle;
-  const eye=transformUpper({x:0,y:5.6,z:distance+1.05},a);
+  const eye=transformUpper({x:1.6,y:6.8,z:distance+1.05},a);
   const target=transformUpper({x:0,y:5.6,z:0},a),up=transformUpper({x:0,y:1,z:0},a);
   this.topCamera.position.copy(eye);this.topCamera.up.set(up.x,up.y,up.z);this.topCamera.lookAt(target.x,target.y,target.z);
   // Near top-down perspective: depth comes from solid walls, faces and shadows,
   // rather than an oblique view of a small board surrounded by empty space.
-  this.bottomCamera.position.set(0,distance+.5,6.45);
-  this.bottomCamera.up.set(0,0,-1);this.bottomCamera.lookAt(0,0,7.8);
+  this.bottomCamera.position.set(1.1,distance+.5,10.0);
+  this.bottomCamera.up.set(0,0,-1);this.bottomCamera.lookAt(0,0,7.1);
   const od=Math.max(31,20/this.overviewCamera.aspect);this.overviewCamera.position.set(od*.42,od*.65,od*.87);this.overviewCamera.lookAt(0,3.5,this.sim.angle>145?-1:3);
   for(const c of [this.topCamera,this.bottomCamera,this.overviewCamera])c.updateProjectionMatrix();
  }

@@ -13,3 +13,8 @@ body.player header{position:fixed;right:6px;top:max(4px,env(safe-area-inset-top)
 
 body.player #overview{display:none}
 body.player .crew-controls small{display:none}
+
+/* Neutral steel controls continue the greybox material palette. */
+body.player .crew-controls button,body.player .crew-controls button:last-child{background:#343a40bb;border-color:#b9c0c755}
+body.player .crew-dot{background:#d3d6d9;box-shadow:none}
+body.player .crew-controls button:last-child .crew-dot{background:#858b94}
