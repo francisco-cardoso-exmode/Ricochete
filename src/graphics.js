@@ -33,9 +33,11 @@ export class Graphics {
   this.ball=mesh(new THREE.SphereGeometry(BALL_RADIUS,32,24),new THREE.MeshStandardMaterial({color:0xfff0ba,emissive:0xffcf65,emissiveIntensity:.45,metalness:.25,roughness:.25}),false);this.scene.add(this.ball);
   const glow=torus(BALL_RADIUS*1.05,.012,new THREE.MeshBasicMaterial({color:0xecfbd2}));this.ball.add(glow);glow.rotation.x=.6;
   this.topCamera=new THREE.PerspectiveCamera(40,1,.08,100);this.bottomCamera=new THREE.PerspectiveCamera(40,1,.08,100);this.overviewCamera=new THREE.PerspectiveCamera(40,1,.08,140);
-  this.path=new THREE.Group();this.scene.add(this.path);this.pathDots=[];
-  const dg=new THREE.SphereGeometry(.037,7,5),dm=new THREE.MeshBasicMaterial({color:0xfaffeb,transparent:true,opacity:.85});
-  for(let i=0;i<90;i++){const dot=new THREE.Mesh(dg,dm);this.path.add(dot);this.pathDots.push(dot);}
+  this.path=new THREE.Group();this.scene.add(this.path);
+  const aimMaterial=new THREE.MeshBasicMaterial({color:0xffedb3,transparent:true,opacity:.9});
+  this.aimStem=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,1,8),aimMaterial);
+  this.aimTip=new THREE.Mesh(new THREE.ConeGeometry(.12,.3,12),aimMaterial);
+  this.path.add(this.aimStem,this.aimTip);
   this.trail=new THREE.Line(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0xf1ffce,transparent:true,opacity:.65}));this.scene.add(this.trail);this.history=[];
   this.pulses=[];this.overview=false;this.lastAngle=-1;this.resize();this.sync();
  }
@@ -159,7 +161,18 @@ export class Graphics {
   const od=Math.max(31,20/this.overviewCamera.aspect);this.overviewCamera.position.set(od*.42,od*.65,od*.87);this.overviewCamera.lookAt(0,3.5,this.sim.angle>145?-1:3);
   for(const c of [this.topCamera,this.bottomCamera,this.overviewCamera])c.updateProjectionMatrix();
  }
- setTrajectory(points){for(let i=0;i<this.pathDots.length;i++){const dot=this.pathDots[i];dot.visible=!!points[i];if(points[i])dot.position.copy(points[i]);}}
+ setTrajectory(points){
+  // A short direction marker painted on the base, not a floating prediction
+  // spanning two cameras. The live ball remains fully physical.
+  const ball=this.sim.ball.translation(),start=new THREE.Vector3(ball.x,.045,ball.z);
+  const sample=points[Math.min(5,points.length-1)];if(!sample)return;
+  const direction=new THREE.Vector3(sample.x-ball.x,0,sample.z-ball.z);
+  const length=Math.min(3.2,Math.max(1.2,direction.length()));direction.normalize();
+  const rotation=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),direction);
+  this.aimStem.position.copy(start).addScaledVector(direction,length/2);
+  this.aimStem.quaternion.copy(rotation);this.aimStem.scale.y=length;
+  this.aimTip.position.copy(start).addScaledVector(direction,length+.12);this.aimTip.quaternion.copy(rotation);
+ }
  sync(){
   const sim=this.sim;this.ball.visible=!['lost','gameover'].includes(sim.state);this.ball.position.copy(sim.ball.translation());this.ball.quaternion.copy(sim.ball.rotation());
   this.upper.rotation.x=foldRotation(sim.angle);
