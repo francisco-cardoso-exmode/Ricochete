@@ -24,7 +24,7 @@ function showResult(won){
  $('#result-text').textContent=`${sim.score} pontos · ${sim.saves} defesas. ${newBest?'Novo recorde!':'Recorde: '+bestScore+'.'} ${won?sim.lesson.name+'.':'Tenta outra vez.'}`;
 }
 let lessonIndex=lab?5:1;
-let sim,graphics,power=72,aim=0,desiredAngle=90,showPath=true,overview=true,predictionDirty=true,predictionAt=0,predictionAngle=-1,paused=false;
+let sim,graphics,power=72,aim=0,desiredAngle=115,showPath=true,overview=true,predictionDirty=true,predictionAt=0,predictionAngle=-1,paused=false;
 let openingPhase=lab?'playing':'closed',openingTime=0;
 let audioContext,audioOn=true,lastTone=0,toastTimer,resetAt=0,resultDelay=0;
 function sound(type,item,intensity=1){
@@ -125,7 +125,7 @@ async function start(){
  let last=performance.now(),accumulator=0,lastHUD=0;
  function tick(now){
   requestAnimationFrame(tick);const dt=Math.min((now-last)/1000,.065);last=now;
-  if(openingPhase==='opening'&&!document.hidden){openingTime+=dt;graphics.setOpening(Math.min(1,openingTime/2.2));if(openingTime>=2.2){openingPhase='playing';sim.beginFeed();$('#box-intro').hidden=true;document.body.classList.remove('opening-box');predictionDirty=true;}}
+  if(openingPhase==='opening'&&!document.hidden){openingTime+=dt;graphics.setOpening(Math.min(1,openingTime/.75));if(openingTime>=.75){openingPhase='playing';sim.beginFeed();$('#box-intro').hidden=true;document.body.classList.remove('opening-box');predictionDirty=true;}}
   if(!paused&&!document.hidden&&openingPhase==='playing'){accumulator+=dt;while(accumulator>=STEP){
    const events=sim.step();for(const event of events){
     if(event.type==='target'&&!sim.lesson.home){graphics.hit(event.item);toast(sim.targets.size===sim.lesson.targets&&sim.lesson.saves>sim.saves?'Agora devolve a bola com uma almofada!':sim.targets.size===sim.lesson.targets-1&&sim.lesson.targets>1?'Só falta um alvo!':`Alvo ${event.item.target+1} · +${event.item.points} pontos`);sound('target');}

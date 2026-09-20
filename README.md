@@ -85,3 +85,5 @@ Pingo é o nome provisório da personagem jogável: a única bola física, com o
 A inspeção da vista permite arrastar fora da caixa (±8° horizontal, ±5° vertical) e usar dois dedos ou roda do rato para zoom de 92%–110%. Dois cliques fora repõem a vista. O gesto de dois dedos cancela a mira sem lançar.
 
 A cavidade superior tem agora 5,8 unidades de profundidade. A partir da caixa 2, placas inclinadas dianteiras e traseiras permitem ressaltos entre planos. Um lançamento normal de força 60 e direção -6° na caixa 2 foi verificado a atingir duas placas com mais de 1,5 unidades de profundidade entre contactos.
+
+A abertura normal usa 115° e dura 0,75 segundos. Durante a apresentação, a profundidade visual do interior passa de 14% para 100%, com a física pausada; a caixa fechada mantém uma silhueta baixa.

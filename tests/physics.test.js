@@ -140,3 +140,7 @@ test('A normal box-two launch ricochets between distinct front and rear plates',
  assert.ok(new Set(hits.map(h=>h.id)).size>=2,'Hits separate physical plates');assert.ok(Math.max(...hits.map(h=>h.z))-Math.min(...hits.map(h=>h.z))>1.5,'Travels through cavity depth between contacts');assert.equal(s.ball.handle,handle);
  }finally{s.dispose();}
 });
+
+test('The first puzzle remains completable with the lid opened back to 115 degrees',()=>{
+ const s=new Simulation(115,1);try{s.launch(72,0);for(let i=0;i<2000&&s.state==='flying';i++)s.step();assert.equal(s.state,'won');assert.ok(s.homeOpen);assert.equal(s.lives,5);}finally{s.dispose();}
+});

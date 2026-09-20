@@ -261,7 +261,7 @@ export class Graphics {
   for(const [f,obj]of this.debris)if(!live.has(f)){this.scene.remove(obj);this.debris.delete(f);}
   for(const f of sim.fragments){let obj=this.debris.get(f);if(!obj){obj=box(...f.size,f.color);this.scene.add(obj);this.debris.set(f,obj);}obj.position.copy(f.body.translation());obj.quaternion.copy(f.body.rotation());}
   this.ball.visible=!['lost','gameover'].includes(sim.state);this.ball.position.copy(sim.ball.translation());this.ball.quaternion.copy(sim.ball.rotation());
-  if(this.homeGate){this.homeGate.position.copy(sim.homeGate.translation());this.homeGate.visible=this.opening>=1;this.homeLight.visible=this.opening>=1;this.homeLight.material.emissiveIntensity=sim.homeOpen?.8:0;this.homeWire.material.color.setHex(sim.homeOpen?0xb5d58b:0x727a80);this.homePad.scale.y=sim.assistAge<.3?3:1;this.homePuffs.forEach((p,i)=>{p.visible=this.opening>=1&&sim.assistCooldown>.35;const t=(.8-sim.assistCooldown)+i*.07;p.position.set((i-1)*.5,.2+t*1.1,9.2+t*2);p.scale.setScalar(.5+t*2);p.material.opacity=Math.max(0,.65-t);});}
+  if(this.homeGate){this.homeGate.position.copy(sim.homeGate.translation());this.homeGate.visible=this.opening>=1;this.homeWire.visible=this.opening>=1;this.homeLight.visible=this.opening>=1;this.homeLight.material.emissiveIntensity=sim.homeOpen?.8:0;this.homeWire.material.color.setHex(sim.homeOpen?0xb5d58b:0x727a80);this.homePad.scale.y=sim.assistAge<.3?3:1;this.homePuffs.forEach((p,i)=>{p.visible=this.opening>=1&&sim.assistCooldown>.35;const t=(.8-sim.assistCooldown)+i*.07;p.position.set((i-1)*.5,.2+t*1.1,9.2+t*2);p.scale.setScalar(.5+t*2);p.material.opacity=Math.max(0,.65-t);});}
   this.upper.rotation.x=foldRotation(sim.angle);
   this.launcher.visible=true;
   for(const {ring,f}of this.padRings){ring.position.set(f.body.translation().x,.06,9.8);ring.visible=this.opening>=1;}
@@ -291,12 +291,14 @@ export class Graphics {
    const orbit=new THREE.Spherical().setFromVector3(offset);orbit.theta+=THREE.MathUtils.degToRad(c.yaw);orbit.phi+=THREE.MathUtils.degToRad(c.pitch);orbit.radius/=c.zoom;
    target.y-=3.5*(1-eased);this.overviewCamera.position.copy(target).add(new THREE.Vector3().setFromSpherical(orbit));this.overviewCamera.lookAt(target);this.overviewCamera.updateMatrixWorld();
   }
-  if(this.opening>=1){this.upper.position.y=0;return;}
-  const rotation=(1-eased)*Math.PI/2,lift=(1-eased)*3.2;
+  if(this.opening>=1){this.upper.position.y=0;this.upper.scale.set(1,1,1);return;}
+  const reveal=THREE.MathUtils.smoothstep(this.opening,.18,.9),depth=.14+.86*reveal;
+  const rotation=(1-eased)*Math.PI/2+eased*foldRotation(this.sim.angle),lift=(1-eased)*1.7;
+  this.upper.scale.z=depth;this.upper.scale.y=1+.12*(1-eased);
   this.upper.rotation.x=rotation;this.upper.position.y=lift;
-  const q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),rotation);
-  for(const [id,obj]of this.dynamics){if(this.sim.dynamic.get(id).item.side!=='upper')continue;obj.position.applyQuaternion(q);obj.position.y+=lift;obj.quaternion.premultiply(q);}
-  for(const {links}of this.chains)for(const link of links){link.position.applyQuaternion(q);link.position.y+=lift;link.quaternion.premultiply(q);}
+  const q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),rotation),inverse=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),-foldRotation(this.sim.angle));
+  for(const [id,obj]of this.dynamics){if(this.sim.dynamic.get(id).item.side!=='upper')continue;obj.position.applyQuaternion(inverse);obj.position.z*=depth;obj.position.applyQuaternion(q);obj.position.y+=lift;obj.quaternion.premultiply(inverse).premultiply(q);}
+  for(const {links}of this.chains)for(const link of links){link.position.applyQuaternion(inverse);link.position.z*=depth;link.position.applyQuaternion(q);link.position.y+=lift;link.quaternion.premultiply(inverse).premultiply(q);}
   this.ball.visible=false;this.path.visible=false;this.launcher.visible=false;
   for(const c of this.crew){c.group.visible=false;c.halo.visible=false;}
  }
