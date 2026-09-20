@@ -1,0 +1,7 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {FoldPhysics,init,STEP,HOME_Z,HINGE} from '../src/fold-physics.js';
+await init();
+function play(power,aim,plate){const s=new FoldPhysics();s.setPlate(plate);const handle=s.ball.handle;s.launch(power,aim);let previous={...s.ball.translation()},maxHeight=0;for(let i=0;i<60/STEP&&s.state!=='ready';i++){s.step();const p=s.ball.translation();assert.equal(s.ball.handle,handle);assert.ok(Math.abs(p.x)<5&&p.y>-.1&&p.y<14&&p.z<6&&p.z>-10,'Inside the box');assert.ok(Math.hypot(p.x-previous.x,p.y-previous.y,p.z-previous.z)<.2,'Continuous path through the hinge');maxHeight=Math.max(maxHeight,p.y);previous={...p};}return {s,maxHeight};}
+test('A real launch climbs through the hinge, touches both upper bells and returns with the same body',()=>{const {s,maxHeight}=play(70,5,0);try{assert.ok(maxHeight>HINGE.y+3);assert.ok(s.visitedUpper);assert.ok(s.solved);assert.equal(s.state,'ready');assert.ok(Math.hypot(s.ball.translation().x,s.ball.translation().z-HOME_Z)<.25);}finally{s.dispose();}});
+test('The former plate-trap trajectory returns by gravity',()=>{const {s}=play(100,30,0);try{assert.equal(s.state,'ready');}finally{s.dispose();}});
+test('Shots across force, aim and plate settings stay in the box and return',()=>{for(const [power,aim,plate]of [[0,-40,-45],[0,40,45],[40,0,0],[70,-20,-30],[100,-40,-45],[100,40,45],[100,0,30]]){const {s}=play(power,aim,plate);try{assert.equal(s.state,'ready',`${power}/${aim}/${plate}`);}finally{s.dispose();}}});
