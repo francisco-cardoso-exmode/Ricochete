@@ -79,6 +79,7 @@ add('upper','bell',[.6,8.0,1.7],[.42,.55],{suspended:true,anchor:[.6,10.5,1.7],b
 add('upper','bell',[-2.7,4.8,2.0],[.37,.5],{suspended:true,anchor:[-2.7,6.05,2.0],bonus:'bell',color:0x9ea4a6});
 add('upper','bell',[3.25,6.15,2.0],[.37,.5],{suspended:true,anchor:[3.25,7.55,2.0],bonus:'bell',color:0xbac0c1});
 add('upper','box',[-3.6,8.65,1.8],[.65,.65,.65],{suspended:true,anchor:[-3.6,10.6,1.8],crate:true,color:0xafbaa0});
+for(const side of [-1,1])add('upper','bumper',[side*2.8,7.4,1.35],[.55,.4],{rotation:[Math.PI/2,0,0],bonus:'bumper',lessonTwo:true,color:0xbfc1c4});
 // A small optional destructible wall, with a shelf fixed to the back panel.
 for(const side of [-1,1])b('upper',side*3.8,2.72,.62,1.6,.25,1.45,{tutorialWall:true,color:0x727272});
 for(const side of [-1,1])for(let row=0;row<3;row++)b('upper',side*3.8,3.25+row*.84,.68,1.3,.78,1.15,{breakable:true,tutorialWall:true,color:0xb7aea0});
@@ -109,16 +110,17 @@ export function launchVelocity(power=72,aim=0) {
 
 export const LESSONS = [
  {name:'O primeiro lançamento',hint:'Arrasta para apontar. Solta e acerta no alvo.',targets:1,saves:0},
- {name:'Escolhe o ângulo',hint:'Muda a direção para acertar nos dois alvos.',targets:2,saves:0},
+ {name:'Escolhe o ângulo',hint:'Aponta à direita e puxa para baixo para subir ao segundo alvo.',targets:2,saves:0},
  {name:'Devolve a bola',hint:'Acerta no alvo e faz uma defesa com Bico ou Bola.',targets:1,saves:1},
  {name:'Ressaltos e sinos',hint:'Três alvos, cestos e sinos. Experimenta os ressaltos.',targets:3,saves:0},
  {name:'O playground',hint:'Usa tudo o que aprendeste para conquistar os três alvos.',targets:3,saves:0},
 ];
 export function piecesForLesson(level=5){
- if(level>=5)return LEVEL.filter(p=>!p.tutorialWall);
+ if(level>=5)return LEVEL.filter(p=>!p.tutorialWall&&!p.lessonTwo);
  const lesson=LESSONS[level-1];
  return LEVEL.filter(p=>{
   if(p.shell)return true;
+  if(p.lessonTwo)return level===2;
   if(p.tutorialWall)return level===2||level===3;
   if(p.target!==undefined)return p.target<lesson.targets;
   // Keep a pair of low guide rails; no wall of decorative blocks in the first box.
@@ -130,6 +132,8 @@ export function piecesForLesson(level=5){
   }
   return false;
  }).map(p=>{
+  if(level===2&&p.shell&&p.side==='upper'&&p.size[2]===3.6)return {...p,pos:[p.pos[0],p.pos[1],2.02],size:[p.size[0],p.size[1],4.6]};
+  if(level===2&&p.target===1)return {...p,pos:[1.65,6.1,.5],size:[1.05,.2]};
   if(level===4&&p.target!==undefined)return {...p,pos:[p.target===0?0:p.target===1?1.8:-1.8,4.2,.14]};
   if(level===4&&p.side==='upper'&&p.shape==='box'&&p.size[0]<.2&&p.pos[0]===1.45)return {...p,pos:[3.6,p.pos[1],p.pos[2]]};
   if(level===4&&p.side==='upper'&&p.shape==='hoop'&&p.pos[0]>0)return {...p,pos:[3.6,p.pos[1],p.pos[2]]};

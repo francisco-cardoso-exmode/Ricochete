@@ -220,6 +220,7 @@ export class Simulation {
   // A disposable snapshot never adds a second ball to the live world.
   const prediction=RAPIER.World.restoreSnapshot(this.world.takeSnapshot());
   prediction.timestep=STEP;
+  prediction.getCollider(this.ballCollider.handle).setRestitution(.43+Math.max(0,power-72)/28*.22);
   const ball=prediction.getRigidBody(this.ball.handle);ball.setBodyType(RAPIER.RigidBodyType.Dynamic,true);ball.setGravityScale(1,true);ball.setLinvel(launchVelocity(power,aim),true);ball.setAngvel({x:-9,y:0,z:0},true);
   const points=[];
   for(let i=0;i<duration/STEP;i++){applyReturnDraft(ball);for(const c of this.characters){prediction.getRigidBody(c.body.handle).setNextKinematicTranslation(this.characterPosition(c,this.time+(i+1)*STEP,c.strikeAge+(i+1)*STEP,(i+1)*STEP));}prediction.step();if(i%4===0)points.push({...ball.translation()});}

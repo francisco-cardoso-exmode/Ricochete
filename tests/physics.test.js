@@ -115,3 +115,7 @@ test('A real ball impact fractures a brick into eight finite moving rigid bodies
 test('Returning to the launch circle recovers the same ball without spending a life',()=>{
  const s=new Simulation(90,2);try{const handle=s.ball.handle;s.launch();s.shotTime=1;s.ball.setTranslation({x:.2,y:.4,z:9.5},true);s.ball.setLinvel({x:0,y:0,z:4},true);advance(s,90);assert.equal(s.state,'ready');assert.equal(s.lives,5);assert.equal(s.ball.handle,handle);assert.equal(s.launch(100,0),true);assert.ok(-s.ball.linvel().z>30);assert.ok(s.ballCollider.restitution()>.6);}finally{s.dispose();}
 });
+
+test('Box 2 upper target accepts several nearby aim angles at medium and high power',()=>{
+ for(const power of [50,72,85,100]){let hits=0;for(const aim of [4,5,6,7]){const s=new Simulation(90,2);try{s.launch(power,aim);for(let i=0;i<1400&&s.state==='flying';i++)s.step();if(s.targets.has(1))hits++;}finally{s.dispose();}}assert.ok(hits>=3,`Power ${power}: upper target needs a forgiving aiming window`);}
+});
